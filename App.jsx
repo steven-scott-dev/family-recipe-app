@@ -35,7 +35,7 @@ export default function App() {
 
   async function fetchFamilyData() {
     // Fetch default family or first record
-    let { data: fams } = await supabase.from('families').select('*').limit(1);
+    let { data: fams, error } = await supabase.from('families').select('*').limit(1);
     if (fams && fams.length > 0) {
       setFamily(fams[0]);
       fetchMembers(fams[0].id);
@@ -58,15 +58,22 @@ export default function App() {
 
   // 1. Family Creation / Profile Save
   async function handleCreateFamily(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const { data, error } = await supabase
       .from('families')
       .upsert({ name: family.name, weekly_budget: family.weekly_budget })
       .select()
       .single();
+
+    if (error) {
+      alert('Error saving family details: ' + error.message);
+      return null;
+    }
+
     if (data) {
       setFamily(data);
       alert('Family details saved successfully!');
+      return data;
     }
   }
 
@@ -75,8 +82,27 @@ export default function App() {
     e.preventDefault();
     if (!memberName) return alert('Please enter a name');
 
+    let currentFamilyId = family.id;
+
+    // Fallback: If no family ID exists in state yet, auto-create default family record first
+    if (!currentFamilyId) {
+      const { data: newFam, error: famError } = await supabase
+        .from('families')
+        .upsert({ name: family.name, weekly_budget: family.weekly_budget })
+        .select()
+        .single();
+
+      if (famError) {
+        return alert('Error creating family profile: ' + famError.message);
+      }
+      if (newFam) {
+        currentFamilyId = newFam.id;
+        setFamily(newFam);
+      }
+    }
+
     const newMember = {
-      family_id: family.id,
+      family_id: currentFamilyId,
       name: memberName,
       is_managed: isManaged,
       email: isManaged ? null : memberEmail,
@@ -85,8 +111,17 @@ export default function App() {
       dislikes: dislikesText.split(',').map(s => s.trim()).filter(Boolean)
     };
 
-    const { data, error } = await supabase.from('family_members').insert([newMember]).select();
-    if (data) {
+    const { data, error } = await supabase
+      .from('family_members')
+      .insert([newMember])
+      .select();
+
+    if (error) {
+      console.error("Supabase Error:", error);
+      return alert('Failed to save member: ' + error.message);
+    }
+
+    if (data && data.length > 0) {
       setMembers([...members, data[0]]);
       // Reset form
       setMemberName('');
@@ -95,6 +130,9 @@ export default function App() {
       setSelectedAllergies([]);
       setDislikesText('');
       alert('Family member added!');
+      
+      // Auto-navigate to Family tab to show updated list
+      setActiveTab('family');
     }
   }
 
@@ -453,4 +491,4 @@ export default function App() {
       </nav>
     </div>
   );
-        }
+}
