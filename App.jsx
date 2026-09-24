@@ -205,7 +205,6 @@ Each item in the array MUST strictly follow this JSON schema:
       }
 
       let content = rawResult.choices[0].message.content.trim();
-      // Clean potential backticks from markdown responses
       content = content.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
 
       const parsedPlan = JSON.parse(content);
