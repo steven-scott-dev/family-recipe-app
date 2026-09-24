@@ -21,10 +21,11 @@ export default function App() {
   const [days, setDays] = useState(7);
   const [mealsPerDay, setMealsPerDay] = useState(3);
   const [generatedMeals, setGeneratedMeals] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Preset options
-  const dietOptions = ['Keto', 'Gluten-Free', 'Vegetarian', 'Vegan', 'Paleo'];
-  const allergyOptions = ['Peanuts', 'Dairy', 'Gluten', 'Eggs', 'Soy', 'Shellfish'];
+  const dietOptions = ['Keto', 'Gluten-Free', 'Vegetarian', 'Vegan', 'Paleo', 'Dairy-Free', 'Low-Carb'];
+  const allergyOptions = ['Peanuts', 'Tree Nuts', 'Dairy', 'Gluten', 'Eggs', 'Soy', 'Shellfish'];
 
   // Load existing family and members from Supabase on mount
   useEffect(() => {
@@ -89,7 +90,6 @@ export default function App() {
 
     let currentFamilyId = family.id;
 
-    // Auto-create family if missing
     if (!currentFamilyId) {
       const { data: newFam, error: famError } = await supabase
         .from('families')
@@ -137,98 +137,89 @@ export default function App() {
     }
   }
 
-  // Generate Meal Plan
-  const generateWeeklyRecipes = () => {
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-
-    const recipeLibrary = [
-      {
-        title: 'Sheet Pan Chicken & Veggies',
-        price: 12.50,
-        prepTime: '25 mins',
-        items: ['Chicken Breast', 'Broccoli', 'Olive Oil', 'Garlic Powder', 'Bell Peppers'],
-        instructions: [
-          'Preheat oven to 400°F (200°C).',
-          'Dice chicken breast and chop broccoli and bell peppers into bite-sized pieces.',
-          'Toss chicken and veggies in olive oil, garlic powder, salt, and pepper on a baking sheet.',
-          'Bake for 20 minutes until chicken reaches an internal temp of 165°F.'
-        ]
-      },
-      {
-        title: 'Keto Avocado & Egg Bowl',
-        price: 6.00,
-        prepTime: '10 mins',
-        items: ['Eggs', 'Avocado', 'Spinach', 'Salt & Pepper', 'Hot Sauce'],
-        instructions: [
-          'Heat a skillet over medium heat with a light coating of oil.',
-          'Scramble or fry 2-3 eggs to your liking.',
-          'Slice fresh avocado half into strips.',
-          'Layer fresh spinach in a bowl, top with hot eggs and sliced avocado, and garnish with hot sauce.'
-        ]
-      },
-      {
-        title: 'Gluten-Free Turkey Wraps',
-        price: 8.00,
-        prepTime: '15 mins',
-        items: ['Sliced Turkey Breast', 'Gluten-Free Wraps', 'Hummus', 'Cucumber', 'Tomato'],
-        instructions: [
-          'Lay a gluten-free tortilla flat and spread 2 tbsp of hummus evenly across the center.',
-          'Layer sliced turkey, thin cucumber strips, and sliced tomatoes.',
-          'Roll tightly and cut in half diagonally to serve.'
-        ]
-      },
-      {
-        title: 'Berry Almond Oat Smoothie',
-        price: 4.50,
-        prepTime: '5 mins',
-        items: ['Unsweetened Almond Milk', 'Frozen Mixed Berries', 'Rolled Oats', 'Chia Seeds'],
-        instructions: [
-          'Pour 1 cup of almond milk into a high-speed blender.',
-          'Add 1 cup of frozen berries, 1/2 cup of rolled oats, and 1 tbsp of chia seeds.',
-          'Blend on high speed for 60 seconds until completely smooth.',
-          'Pour into a tall glass and serve cold.'
-        ]
-      },
-      {
-        title: 'Garlic Butter Salmon & Asparagus',
-        price: 16.00,
-        prepTime: '20 mins',
-        items: ['Salmon Fillets', 'Asparagus', 'Butter', 'Minced Garlic', 'Lemon'],
-        instructions: [
-          'Melt 2 tbsp of butter in a large skillet over medium-high heat with minced garlic.',
-          'Place salmon fillets skin-side down and arrange trimmed asparagus around the fish.',
-          'Sear salmon for 4 minutes per side while basting with garlic butter.',
-          'Squeeze fresh lemon juice over top and serve immediately.'
-        ]
-      }
-    ];
-
-    const plan = [];
-    for (let d = 0; d < days; d++) {
-      const currentDay = dayNames[d % dayNames.length];
-      for (let m = 0; m < mealsPerDay; m++) {
-        const currentType = mealTypes[m % mealTypes.length];
-        const randomRecipe = recipeLibrary[Math.floor(Math.random() * recipeLibrary.length)];
-
-        plan.push({
-          day: currentDay,
-          type: currentType,
-          title: randomRecipe.title,
-          displayTitle: `${currentDay} ${currentType}: ${randomRecipe.title}`,
-          price: randomRecipe.price,
-          prepTime: randomRecipe.prepTime,
-          ingredients: randomRecipe.items,
-          instructions: randomRecipe.instructions
-        });
-      }
+  // AI-Powered Meal Generator
+  const generateAIMealPlan = async () => {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) {
+      return alert('Groq API Key is missing! Add VITE_GROQ_API_KEY in Vercel settings.');
     }
 
-    setGeneratedMeals(plan);
+    setIsGenerating(true);
+
+    // Compile constraints from family roster
+    const allDiets = Array.from(new Set(members.flatMap(m => m.dietary_preferences || [])));
+    const allAllergies = Array.from(new Set(members.flatMap(m => m.allergies || [])));
+    const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
+
+    const prompt = `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
+
+Family Profile:
+- Total Family Members: ${members.length \vert{}\vert{} 1} - Weekly Grocery Budget Target:$${family.weekly_budget \vert{}\vert{} 150} - Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
+- CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}
+- Disliked Foods to Exclude: ${allDislikes.length ? allDislikes.join(', ') : 'None'}
+
+Meal Schedule Request:
+- Number of Days: ${days}
+- Meals per day: ${mealsPerDay}
+
+Instructions:
+Respond ONLY with a valid JSON array of meal objects. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Each item in the array MUST strictly follow this JSON schema:
+[
+  {
+    "day": "Monday",
+    "type": "Breakfast",
+    "title": "Recipe Title",
+    "displayTitle": "Monday Breakfast: Recipe Title",
+    "price": 8.50,
+    "prepTime": "15 mins",
+    "servings": "4 servings",
+    "ingredients": [
+      "2 cups Almond Milk",
+      "1 tsp Garlic Powder"
+    ],
+    "instructions": [
+      "Step 1 instruction...",
+      "Step 2 instruction..."
+    ]
+  }
+]`;
+
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7
+        })
+      });
+
+      const rawResult = await response.json();
+      if (rawResult.error) {
+        throw new Error(rawResult.error.message);
+      }
+
+      let content = rawResult.choices[0].message.content.trim();
+      // Clean potential backticks from markdown responses
+      content = content.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+      const parsedPlan = JSON.parse(content);
+      setGeneratedMeals(parsedPlan);
+    } catch (err) {
+      console.error('AI Generation Error:', err);
+      alert('Failed to generate AI meal plan: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const calculateTotalCost = () => {
-    return generatedMeals.reduce((acc, curr) => acc + curr.price, 0);
+    return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
 
   return (
@@ -236,7 +227,7 @@ export default function App() {
       {/* Top Header */}
       <header className="bg-slate-900 text-white p-4 text-center shadow-md">
         <h1 className="text-xl font-bold tracking-wide">Family Recipe & Meal Planner</h1>
-        <p className="text-xs text-slate-400 mt-0.5">Budget-Smart Meal Organization</p>
+        <p className="text-xs text-slate-400 mt-0.5">AI-Powered Personalized Nutrition</p>
       </header>
 
       {/* Main Container */}
@@ -246,7 +237,12 @@ export default function App() {
         {activeTab === 'meal_planning' && (
           <div className="space-y-4">
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-              <h2 className="text-base font-bold text-slate-800 border-b pb-2">Generate Meal Plan</h2>
+              <div className="flex justify-between items-center border-b pb-2">
+                <h2 className="text-base font-bold text-slate-800">Generate Meal Plan</h2>
+                <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded">
+                  ✨ AI Powered
+                </span>
+              </div>
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -273,11 +269,21 @@ export default function App() {
                 </div>
               </div>
 
+              {members.length > 0 && (
+                <div className="text-[11px] bg-slate-50 p-2 rounded border border-slate-200 text-slate-600">
+                  <p className="font-semibold text-slate-700">Accounting for {members.length} member(s):</p>
+                  <p className="truncate">
+                    Diet/Allergies: {Array.from(new Set(members.flatMap(m => [...(m.dietary_preferences||[]), ...(m.allergies||[])]))).join(', ') || 'None set'}
+                  </p>
+                </div>
+              )}
+
               <button 
-                onClick={generateWeeklyRecipes}
-                className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-emerald-700 transition shadow"
+                onClick={generateAIMealPlan}
+                disabled={isGenerating}
+                className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
               >
-                Build Weekly Schedule
+                {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Generate AI Meal Schedule'}
               </button>
             </div>
 
@@ -299,10 +305,10 @@ export default function App() {
                       className="bg-white p-3 rounded-lg border border-slate-200 text-xs flex justify-between items-center shadow-sm cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/40 transition"
                     >
                       <div>
-                        <p className="font-bold text-slate-800">{meal.displayTitle}</p>
-                        <p className="text-slate-500">Tap to view recipe & steps 📖</p>
+                        <p className="font-bold text-slate-800">{meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}</p>
+                        <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                       </div>
-                      <span className="font-semibold text-slate-600 ml-2">${meal.price.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'}</span>
                     </div>
                   ))}
                 </div>
@@ -333,7 +339,7 @@ export default function App() {
         {/* TAB 2: SETUP & MEMBER CREATION */}
         {activeTab === 'setup' && (
           <div className="space-y-4">
-            {/* Family Household Settings */}
+            {/* Household Settings */}
             <form onSubmit={handleSaveFamily} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
               <h2 className="text-base font-bold text-slate-800 border-b pb-2">Household Profile</h2>
               <div>
@@ -508,14 +514,21 @@ export default function App() {
 
       </main>
 
-      {/* RECIPE DETAILS MODAL */}
+      {/* DETAILED RECIPE MODAL */}
       {selectedRecipe && (
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b pb-2">
               <div>
                 <h3 className="font-bold text-base text-slate-800">{selectedRecipe.title}</h3>
-                <p className="text-xs text-emerald-600 font-semibold">Prep Time: {selectedRecipe.prepTime || '15-20 mins'}</p>
+                <div className="flex gap-2 text-xs font-semibold mt-1">
+                  <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    ⏱️ {selectedRecipe.prepTime || '15-20 mins'}
+                  </span>
+                  <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    🍽️ {selectedRecipe.servings || '2-4 servings'}
+                  </span>
+                </div>
               </div>
               <button 
                 onClick={() => setSelectedRecipe(null)}
@@ -526,19 +539,19 @@ export default function App() {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold uppercase text-slate-500 mb-1">Ingredients</h4>
-              <ul className="list-disc list-inside text-xs text-slate-700 space-y-1">
+              <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Ingredients & Quantities</h4>
+              <ul className="list-disc list-inside text-xs text-slate-700 space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                 {selectedRecipe.ingredients?.map((item, i) => (
-                  <li key={i}>{item}</li>
+                  <li key={i} className="leading-snug">{item}</li>
                 ))}
               </ul>
             </div>
 
             <div>
-              <h4 className="text-xs font-bold uppercase text-slate-500 mb-1">Preparation Steps</h4>
+              <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Step-By-Step Instructions</h4>
               <ol className="list-decimal list-inside text-xs text-slate-700 space-y-2">
                 {selectedRecipe.instructions?.map((step, i) => (
-                  <li key={i} className="leading-relaxed">{step}</li>
+                  <li key={i} className="leading-relaxed border-b border-slate-100 pb-1.5">{step}</li>
                 )) || <li>No steps recorded for this recipe.</li>}
               </ol>
             </div>
@@ -580,4 +593,3 @@ export default function App() {
     </div>
   );
 }
-
