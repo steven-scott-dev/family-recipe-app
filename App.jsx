@@ -245,7 +245,7 @@ export default function App() {
     const prompt = `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
 Family Profile:
-- Total Family Members: ${members.length \vert{}\vert{} 1} - Weekly Grocery Budget Target:$${family.weekly_budget \vert{}\vert{} 150} - Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
+- Total Family Members: ${members.length || 1} - Weekly Grocery Budget Target:$${family.weekly_budget || 150} - Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
 - CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}
 - Disliked Foods to Exclude: ${allDislikes.length ? allDislikes.join(', ') : 'None'}
 
