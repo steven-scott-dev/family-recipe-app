@@ -23,6 +23,10 @@ export default function App() {
   const [generatedMeals, setGeneratedMeals] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Saved Plans State
+  const [savedPlans, setSavedPlans] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Preset options
   const dietOptions = ['Keto', 'Gluten-Free', 'Vegetarian', 'Vegan', 'Paleo', 'Dairy-Free', 'Low-Carb'];
   const allergyOptions = ['Peanuts', 'Tree Nuts', 'Dairy', 'Gluten', 'Eggs', 'Soy', 'Shellfish'];
@@ -44,6 +48,7 @@ export default function App() {
 
       if (familyData) {
         setFamily(familyData);
+        fetchSavedPlans(familyData.id);
         const { data: memberData, error: memError } = await supabase
           .from('family_members')
           .select('*')
@@ -135,6 +140,92 @@ export default function App() {
       setDislikesText('');
       alert('Family member added successfully!');
     }
+  }
+
+  // Saved meal plans: fetch / save / load / delete
+  async function fetchSavedPlans(familyId) {
+    if (!familyId) return;
+    const { data, error } = await supabase
+      .from('meal_plans')
+      .select('*')
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching saved plans:', error);
+      return;
+    }
+    setSavedPlans(data || []);
+  }
+
+  async function handleSavePlan() {
+    if (!generatedMeals.length) return;
+    if (!family.id) return alert('Save your household profile first.');
+    setIsSaving(true);
+    try {
+      const { data: plan, error: planError } = await supabase
+        .from('meal_plans')
+        .insert([{
+          family_id: family.id,
+          name: `Plan ${new Date().toLocaleDateString()}`,
+          days,
+          meals_per_day: mealsPerDay,
+          total_cost: calculateTotalCost()
+        }])
+        .select()
+        .single();
+      if (planError) throw planError;
+
+      const mealRows = generatedMeals.map(m => ({
+        plan_id: plan.id,
+        day: m.day,
+        type: m.type,
+        title: m.title,
+        display_title: m.displayTitle || null,
+        price: m.price ?? null,
+        prep_time: m.prepTime || null,
+        servings: m.servings || null,
+        ingredients: m.ingredients || [],
+        instructions: m.instructions || []
+      }));
+      const { error: mealsError } = await supabase.from('meals').insert(mealRows);
+      if (mealsError) throw mealsError;
+
+      alert('Meal plan saved!');
+      fetchSavedPlans(family.id);
+    } catch (err) {
+      console.error('Save plan error:', err);
+      alert('Failed to save plan: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleLoadPlan(planId) {
+    const { data, error } = await supabase
+      .from('meals')
+      .select('*')
+      .eq('plan_id', planId)
+      .order('created_at', { ascending: true });
+    if (error) return alert('Failed to load plan: ' + error.message);
+    setGeneratedMeals((data || []).map(m => ({
+      day: m.day,
+      type: m.type,
+      title: m.title,
+      displayTitle: m.display_title,
+      price: m.price,
+      prepTime: m.prep_time,
+      servings: m.servings,
+      ingredients: m.ingredients,
+      instructions: m.instructions
+    })));
+    setActiveTab('meal_planning');
+  }
+
+  async function handleDeletePlan(planId) {
+    if (!confirm('Delete this saved plan?')) return;
+    const { error } = await supabase.from('meal_plans').delete().eq('id', planId);
+    if (error) return alert('Failed to delete plan: ' + error.message);
+    setSavedPlans(savedPlans.filter(p => p.id !== planId));
   }
 
   // AI-Powered Meal Generator
@@ -291,9 +382,18 @@ Each item in the array MUST strictly follow this JSON schema:
               <div className="space-y-2">
                 <div className="flex justify-between items-center px-1">
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                    Total: ${calculateTotalCost().toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                      Total: ${calculateTotalCost().toFixed(2)}
+                    </span>
+                    <button
+                      onClick={handleSavePlan}
+                      disabled={isSaving}
+                      className={`text-xs font-bold px-3 py-1 rounded ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                    >
+                      {isSaving ? 'Saving...' : '💾 Save Plan'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
@@ -311,6 +411,27 @@ Each item in the array MUST strictly follow this JSON schema:
                     </div>
                   ))}
                 </div>
+
+                {/* Saved Plans */}
+                {savedPlans.length > 0 && (
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                    <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Saved Plans</h4>
+                    <div className="space-y-1.5">
+                      {savedPlans.map(plan => (
+                        <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
+                          <div>
+                            <p className="font-bold text-slate-700">{plan.name}</p>
+                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ${Number(plan.total_cost || 0).toFixed(2)}</p>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
+                            <button onClick={() => handleDeletePlan(plan.id)} className="font-bold text-red-600 hover:underline">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Grocery Integration */}
                 <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 pt-3">
