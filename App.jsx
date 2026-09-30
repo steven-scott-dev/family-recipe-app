@@ -7,6 +7,7 @@ export default function App() {
   const [showShopping, setShowShopping] = useState(false);
   const [shoppingList, setShoppingList] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
+  const [shoppingRange, setShoppingRange] = useState('');
 
   // Family State
   const [family, setFamily] = useState({ name: 'Our Family', weekly_budget: 150 });
@@ -487,6 +488,11 @@ Each item in the array MUST strictly follow this JSON schema:
   };
 
   const openShopping = () => {
+    const start = new Date();
+    const end = new Date();
+    end.setDate(start.getDate() + ((days || 7) - 1));
+    const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    setShoppingRange(`${fmt(start)} \u2013 ${fmt(end)}`);
     setShoppingList(null);
     setCheckedItems({});
     setShowShopping(true);
@@ -589,7 +595,7 @@ Each item in the array MUST strictly follow this JSON schema:
                       onClick={openShopping}
                       className="text-xs font-bold px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
                     >
-                      \U0001F6D2 List
+                      🛒 List
                     </button>
                     <button
                       onClick={handleSavePlan}
@@ -845,16 +851,16 @@ Each item in the array MUST strictly follow this JSON schema:
           <div className="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-start border-b pb-2">
               <div>
-                <h3 className="font-bold text-base text-slate-800">\U0001F6D2 Shopping List</h3>
+                <h3 className="font-bold text-base text-slate-800">🛒 Shopping List · {shoppingRange}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {days} days \u00b7 {generatedMeals.length} meals \u00b7 Est. ${calculateTotalCost().toFixed(2)}
+                  {days} days · {generatedMeals.length} meals · Est. ${calculateTotalCost().toFixed(2)}
                 </p>
               </div>
               <button
                 onClick={() => setShowShopping(false)}
                 className="text-slate-400 hover:text-slate-700 font-bold text-lg px-2"
               >
-                \u2715
+                ✕
               </button>
             </div>
 
@@ -879,7 +885,7 @@ Each item in the array MUST strictly follow this JSON schema:
             ) : (
               <div className="space-y-3">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  {shoppingList.length} items \u00b7 tap to check off
+                  {shoppingList.length} items · tap to check off
                 </p>
                 <ul className="space-y-1.5">
                   {shoppingList.map((item) => (
