@@ -189,6 +189,7 @@ export default function App() {
         prep_time: m.prepTime || null,
         servings: m.servings || null,
         nutrition: m.nutrition || null,
+        ratings: m.ratings || {},
         ingredients: m.ingredients || [],
         instructions: m.instructions || []
       }));
@@ -221,6 +222,8 @@ export default function App() {
       prepTime: m.prep_time,
       servings: m.servings,
       nutrition: m.nutrition || null,
+      ratings: m.ratings || {},
+      mealId: m.id,
       ingredients: m.ingredients,
       instructions: m.instructions
     })));
@@ -516,6 +519,29 @@ Each item in the array MUST strictly follow this JSON schema:
     }
   };
 
+  const avgRating = (meal) => {
+    const vals = Object.values(meal.ratings || {});
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+
+  const setMealRating = async (memberId, stars) => {
+    const meal = selectedRecipe;
+    if (!meal) return;
+    const ratings = { ...(meal.ratings || {}), [memberId]: stars };
+    const updated = { ...meal, ratings };
+    setSelectedRecipe(updated);
+    setGeneratedMeals((prev) =>
+      prev.map((m) =>
+        m.day === meal.day && m.type === meal.type && m.title === meal.title ? { ...m, ratings } : m
+      )
+    );
+    if (meal.mealId) {
+      const { error } = await supabase.from('meals').update({ ratings }).eq('id', meal.mealId);
+      if (error) console.error('Rating save error:', error);
+    }
+  };
+
   const calculateTotalCost = () => {
     return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
@@ -611,7 +637,9 @@ Each item in the array MUST strictly follow this JSON schema:
                 </div>
 
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                  {generatedMeals.map((meal, idx) => (
+                  {generatedMeals.map((meal, idx) => {
+                    const avg = avgRating(meal);
+                    return (
                     <div 
                       key={idx} 
                       onClick={() => setSelectedRecipe(meal)}
@@ -621,9 +649,13 @@ Each item in the array MUST strictly follow this JSON schema:
                         <p className="font-bold text-slate-800">{meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}</p>
                         <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                       </div>
-                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
+                      <span className="text-right ml-2 shrink-0">
+                        <span className="font-semibold text-slate-600 block">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
+                        {avg && <span className="text-amber-500 text-[11px] font-bold">★ {avg.toFixed(1)}</span>}
+                      </span>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Saved Plans */}
@@ -951,6 +983,33 @@ Each item in the array MUST strictly follow this JSON schema:
                 ✕
               </button>
             </div>
+
+            {members.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Rate this meal</h4>
+                <div className="space-y-1.5">
+                  {members.map((member) => {
+                    const r = (selectedRecipe.ratings || {})[member.id] || 0;
+                    return (
+                      <div key={member.id} className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                        <span className="text-xs font-semibold text-slate-700 truncate mr-2">{member.name}</span>
+                        <span className="flex gap-0.5 shrink-0">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => setMealRating(member.id, s)}
+                              className={`text-lg leading-none ${s <= r ? 'text-amber-400' : 'text-slate-300 hover:text-amber-200'}`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {selectedRecipe.nutrition && (
               <div>
