@@ -1,1 +1,83 @@
-ZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIGdlbmVyYXRlQUlNZWFsUGxhbih7IG1lbWJlcnMsIGZhbWlseSwgZGF5cywgbWVhbHNQZXJEYXkgfSkgewogIGNvbnN0IGFwaUtleSA9IGltcG9ydC5tZXRhLmVudi5WSVRFX0dST1FfQVBJX0tFWTsKICBpZiAoIWFwaUtleSkgewogICAgdGhyb3cgbmV3IEVycm9yKCdHcm9xIEFQSSBLZXkgaXMgbWlzc2luZyEgQWRkIFZJVEVfR1JPUV9BUElfS0VZIGluIFZlcmNlbCBzZXR0aW5ncy4nKTsKICB9CgogIGNvbnN0IGFsbERpZXRzID0gQXJyYXkuZnJvbShuZXcgU2V0KG1lbWJlcnMuZmxhdE1hcChtID0+IG0uZGlldGFyeV9wcmVmZXJlbmNlcyB8fCBbXSkpKTsKICBjb25zdCBhbGxBbGxlcmdpZXMgPSBBcnJheS5mcm9tKG5ldyBTZXQobWVtYmVycy5mbGF0TWFwKG0gPT4gbS5hbGxlcmdpZXMgfHwgW10pKSk7CiAgY29uc3QgYWxsRGlzbGlrZXMgPSBBcnJheS5mcm9tKG5ldyBTZXQobWVtYmVycy5mbGF0TWFwKG0gPT4gbS5kaXNsaWtlcyB8fCBbXSkpKTsKCiAgY29uc3QgcHJvbXB0ID0gYFlvdSBhcmUgYW4gZXhwZXJ0IGNoZWYgYW5kIGZhbWlseSBudXRyaXRpb25pc3QuIEdlbmVyYXRlIGEgcmVhbGlzdGljLCB2YXJpZWQgSlNPTiBtZWFsIHBsYW4uCgpGQU1JTFkgQ09OVEVYVDoKLSBNZW1iZXJzOiAke21lbWJlcnMubGVuZ3RoIHx8IDF9Ci0gVGFyZ2V0IEJ1ZGdldDogJCR7ZmFtaWx5LndlZWtseV9idWRnZXQgfHwgMTUwfQotIERpZXRhcnkgUHJlZmVyZW5jZXM6ICR7YWxsRGlldHMubGVuZ3RoID8gYWxsRGlldHMuam9pbignLCAnKSA6ICdOb25lJ30KLSBBbGxlcmdpZXMgKFNUUklDVCk6ICR7YWxsQWxsZXJnaWVzLmxlbmd0aCA/IGFsbEFsbGVyZ2llcy5qb2luKCcsICcpIDogJ05vbmUnfQotIERpc2xpa2VzOiAke2FsbERpc2xpa2VzLmxlbmd0aCA/IGFsbERpc2xpa2VzLmpvaW4oJywgJykgOiAnTm9uZSd9CgpQTEFOTklORyBSVUxFUzoKMS4gVkFSSUVUWTogRG8gTk9UIHJlcGVhdCB0aGUgc2FtZSByZWNpcGUgYWNyb3NzIHRoZSBwbGFuLiBFdmVyeSBzaW5nbGUgbWVhbCBtdXN0IGJlIHVuaXF1ZSBhbmQgZGlzdGluY3QuCjIuIE1FQUwgQVBQUk9QUklBVEVORVNTOgogICAtIERpbm5lciBNVVNUIGJlIGEgc3Vic3RhbnRpYWwgaG90IG1lYWwgb3IgbWFpbiBlbnRyZWUgKGUuZy4sIHByb3RlaW5zLCByb2FzdGVkIG1lYWxzLCBjYXNzZXJvbGVzLCBwYXN0YXMsIGhlYXJ0eSBzb3VwcykuIE5FVkVSIGFzc2lnbiBzbW9vdGhpZXMsIHF1aWNrIGxpZ2h0IHNuYWNrcywgb3IgYnJlYWtmYXN0IG9hdHMgZm9yIGRpbm5lci4KICAgLSBCcmVha2Zhc3QgY2FuIGluY2x1ZGUgZWdncywgb2F0cywgYnJlYWtmYXN0IGJvd2xzLCBvciBzbW9vdGhpZXMuCiAgIC0gTHVuY2ggc2hvdWxkIGJlIGxpZ2h0IHRvIG1vZGVyYXRlIChzYW5kd2ljaGVzLCB3cmFwcywgc2FsYWRzLCBncmFpbiBib3dscywgbGlnaHQgd2FybSBkaXNoZXMpLgozLiBFWEFDVCBJTkdSRURJRU5UUyBXSVRIIFFVQU5USVRJRVM6CiAgIC0gRXZlcnkgaW5ncmVkaWVudCBlbnRyeSBNVVNUIGluY2x1ZGUgZXhhY3QgcXVhbnRpdGllcyBhbmQgdW5pdHMgKGUuZy4sICIxLjUgbGJzIGJvbmVsZXNzIGNoaWNrZW4gYnJlYXN0IiwgIjIgY3VwcyByb2xsZWQgb2F0cyIsICIxIHRic3Agb2xpdmUgb2lsIiwgIjEvMiB0c3Agc2FsdCIpLiBOZXZlciB3cml0ZSBwbGFpbiBpbmdyZWRpZW50IG5hbWVzIHdpdGhvdXQgYW1vdW50cy4KClNDSEVEVUxFIERFVEFJTFM6Ci0gTnVtYmVyIG9mIERheXM6ICR7ZGF5c30KLSBNZWFscyBwZXIgRGF5OiAke21lYWxzUGVyRGF5fQoKUmV0dXJuIE9OTFkgYSB2YWxpZCBKU09OIGFycmF5IG1hdGNoaW5nIHRoaXMgZXhhY3Qgc2NoZW1hLCB3aXRob3V0IG1hcmtkb3duIGZvcm1hdHRpbmcgb3IgY29kZSBibG9jayBiYWNrdGlja3M6ClsKICB7CiAgICAiZGF5IjogIk1vbmRheSIsCiAgICAidHlwZSI6ICJEaW5uZXIiLAogICAgInRpdGxlIjogIkdhcmxpYyBCdXR0ZXIgQmFrZWQgU2FsbW9uIHdpdGggUm9hc3RlZCBCcm9jY29saSIsCiAgICAiZGlzcGxheVRpdGxlIjogIk1vbmRheSBEaW5uZXI6IEdhcmxpYyBCdXR0ZXIgQmFrZWQgU2FsbW9uIiwKICAgICJwcmljZSI6IDE0LjUwLAogICAgInByZXBUaW1lIjogIjI1IG1pbnMiLAogICAgInNlcnZpbmdzIjogIjQgc2VydmluZ3MiLAogICAgImluZ3JlZGllbnRzIjogWwogICAgICAiMS41IGxicyBmcmVzaCBzYWxtb24gZmlsbGV0cyIsCiAgICAgICIzIGNsb3ZlcyBnYXJsaWMsIG1pbmNlZCIsCiAgICAgICIyIHRic3AgdW5zYWx0ZWQgYnV0dGVyLCBtZWx0ZWQiLAogICAgICAiMSBoZWFkIGZyZXNoIGJyb2Njb2xpLCBjaG9wcGVkIGludG8gZmxvcmV0cyIsCiAgICAgICIxIHRic3Agb2xpdmUgb2lsIiwKICAgICAgIjEvMiB0c3Agc2FsdCIsCiAgICAgICIxLzQgdHNwIGJsYWNrIHBlcHBlciIKICAgIF0sCiAgICAiaW5zdHJ1Y3Rpb25zIjogWwogICAgICAiUHJlaGVhdCBvdmVuIHRvIDQwMMKwRiAoMjAwwrBDKS4iLAogICAgICAiVG9zcyBicm9jY29saSBmbG9yZXRzIGluIG9saXZlIG9pbCwgc2FsdCwgYW5kIHBlcHBlciBvbiBhIGJha2luZyBzaGVldC4iLAogICAgICAiTWl4IG1lbHRlZCBidXR0ZXIgYW5kIG1pbmNlZCBnYXJsaWMsIHRoZW4gYnJ1c2ggZXZlbmx5IG92ZXIgc2FsbW9uIGZpbGxldHMuIiwKICAgICAgIlBsYWNlIHNhbG1vbiBvbiB0aGUgc2hlZXQgYWxvbmdzaWRlIGJyb2Njb2xpIGFuZCBiYWtlIGZvciAxMi0xNSBtaW51dGVzIHVudGlsIHNhbG1vbiBmbGFrZXMgZWFzaWx5LiIKICAgIF0KICB9Cl1gOwoKICBjb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKCdodHRwczovL2FwaS5ncm9xLmNvbS9vcGVuYWkvdjEvY2hhdC9jb21wbGV0aW9ucycsIHsKICAgIG1ldGhvZDogJ1BPU1QnLAogICAgaGVhZGVyczogewogICAgICAnQ29udGVudC1UeXBlJzogJ2FwcGxpY2F0aW9uL2pzb24nLAogICAgICAnQXV0aG9yaXphdGlvbic6IGBCZWFyZXIgJHthcGlLZXl9YAogICAgfSwKICAgIGJvZHk6IEpTT04uc3RyaW5naWZ5KHsKICAgICAgbW9kZWw6ICdvcGVuYWkvZ3B0LW9zcy0xMjBiJywKICAgICAgbWVzc2FnZXM6IFt7IHJvbGU6ICd1c2VyJywgY29udGVudDogcHJvbXB0IH1dLAogICAgICB0ZW1wZXJhdHVyZTogMC43CiAgICB9KQogIH0pOwoKICBjb25zdCByYXdSZXN1bHQgPSBhd2FpdCByZXNwb25zZS5qc29uKCk7CiAgaWYgKHJhd1Jlc3VsdC5lcnJvcikgewogICAgdGhyb3cgbmV3IEVycm9yKHJhd1Jlc3VsdC5lcnJvci5tZXNzYWdlKTsKICB9CgogIGxldCBjb250ZW50ID0gcmF3UmVzdWx0LmNob2ljZXNbMF0ubWVzc2FnZS5jb250ZW50LnRyaW0oKTsKICBjb250ZW50ID0gY29udGVudC5yZXBsYWNlKC9eYGBganNvbi9pLCAnJykucmVwbGFjZSgvXmBgYC8sICcnKS5yZXBsYWNlKC9gYGAkLywgJycpLnRyaW0oKTsKCiAgcmV0dXJuIEpTT04ucGFyc2UoY29udGVudCk7Cn0K
+export async function generateAIMealPlan({ members, family, days, mealsPerDay }) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('Groq API Key is missing! Add VITE_GROQ_API_KEY in Vercel settings.');
+  }
+
+  const allDiets = Array.from(new Set(members.flatMap(m => m.dietary_preferences || [])));
+  const allAllergies = Array.from(new Set(members.flatMap(m => m.allergies || [])));
+  const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
+
+  const prompt = `You are an expert chef and family nutritionist. Generate a realistic, varied JSON meal plan.
+
+FAMILY CONTEXT:
+- Members: ${members.length || 1}
+- Target Budget: $${family.weekly_budget || 150}
+- Dietary Preferences: ${allDiets.length ? allDiets.join(', ') : 'None'}
+- Allergies (STRICT): ${allAllergies.length ? allAllergies.join(', ') : 'None'}
+- Dislikes: ${allDislikes.length ? allDislikes.join(', ') : 'None'}
+
+PLANNING RULES:
+1. VARIETY: Do NOT repeat the same recipe across the plan. Every single meal must be unique and distinct.
+2. MEAL APPROPRIATENESS:
+   - Dinner MUST be a substantial hot meal or main entree (e.g., proteins, roasted meals, casseroles, pastas, hearty soups). NEVER assign smoothies, quick light snacks, or breakfast oats for dinner.
+   - Breakfast can include eggs, oats, breakfast bowls, or smoothies.
+   - Lunch should be light to moderate (sandwiches, wraps, salads, grain bowls, light warm dishes).
+3. EXACT INGREDIENTS WITH QUANTITIES:
+   - Every ingredient entry MUST include exact quantities and units (e.g., "1.5 lbs boneless chicken breast", "2 cups rolled oats", "1 tbsp olive oil", "1/2 tsp salt"). Never write plain ingredient names without amounts.
+
+SCHEDULE DETAILS:
+- Number of Days: ${days}
+- Meals per Day: ${mealsPerDay}
+
+Return ONLY a valid JSON array matching this exact schema, without markdown formatting or code block backticks:
+[
+  {
+    "day": "Monday",
+    "type": "Dinner",
+    "title": "Garlic Butter Baked Salmon with Roasted Broccoli",
+    "displayTitle": "Monday Dinner: Garlic Butter Baked Salmon",
+    "price": 14.50,
+    "prepTime": "25 mins",
+    "servings": "4 servings",
+    "ingredients": [
+      "1.5 lbs fresh salmon fillets",
+      "3 cloves garlic, minced",
+      "2 tbsp unsalted butter, melted",
+      "1 head fresh broccoli, chopped into florets",
+      "1 tbsp olive oil",
+      "1/2 tsp salt",
+      "1/4 tsp black pepper"
+    ],
+    "instructions": [
+      "Preheat oven to 400°F (200°C).",
+      "Toss broccoli florets in olive oil, salt, and pepper on a baking sheet.",
+      "Mix melted butter and minced garlic, then brush evenly over salmon fillets.",
+      "Place salmon on the sheet alongside broccoli and bake for 12-15 minutes until salmon flakes easily."
+    ]
+  }
+]`;
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'openai/gpt-oss-120b',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
+    })
+  });
+
+  const rawResult = await response.json();
+  if (rawResult.error) {
+    throw new Error(rawResult.error.message);
+  }
+
+  let content = rawResult.choices[0].message.content.trim();
+  content = content.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+  return JSON.parse(content);
+}
