@@ -72,6 +72,14 @@ export default function App() {
     setSession(null);
   };
 
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) alert('Google sign-in failed: ' + error.message);
+  };
+
   async function fetchFamilyData() {
     try {
       const { data: familyData, error: famError } = await supabase
@@ -653,6 +661,17 @@ Each item in the array MUST strictly follow this JSON schema:
                 Send sign-in link
               </button>
             </form>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="flex-1 border-t border-slate-200" />
+              or
+              <span className="flex-1 border-t border-slate-200" />
+            </div>
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-50"
+            >
+              Sign in with Google
+            </button>
           )}
         </div>
       </div>
