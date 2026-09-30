@@ -4,6 +4,9 @@ import { supabase } from './supabaseClient';
 export default function App() {
   const [activeTab, setActiveTab] = useState('meal_planning');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [showShopping, setShowShopping] = useState(false);
+  const [shoppingList, setShoppingList] = useState(null);
+  const [checkedItems, setCheckedItems] = useState({});
 
   // Family State
   const [family, setFamily] = useState({ name: 'Our Family', weekly_budget: 150 });
@@ -254,7 +257,7 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -421,6 +424,89 @@ Each item in the array MUST strictly follow this JSON schema:
     );
   };
 
+  const fmtQty = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 4) / 4));
+
+  const KNOWN_UNITS = ['cup','tbsp','tsp','oz','ounce','lb','pound','g','gram','kg','ml','liter','clove','can','slice','piece','stalk','bunch','pinch','dash'];
+
+  const singular = (w) => w.replace(/s$/, '');
+
+  const parseIngredientDetail = (item) => {
+    const str = String(item).trim();
+    const m = str.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)\s+(.*)$/);
+    if (!m) return { qty: null, unit: '', name: str.toLowerCase() };
+    let val = 0;
+    const parts = m[1].trim().split(/\s+/);
+    for (const p of parts) {
+      if (p.includes('/')) {
+        const frac = p.split('/');
+        val += parseFloat(frac[0]) / parseFloat(frac[1]);
+      } else {
+        val += parseFloat(p);
+      }
+    }
+    const rest = m[2].trim();
+    const words = rest.split(/\s+/);
+    const first = words[0].toLowerCase().replace(/[^a-z]/g, '');
+    let unit = '';
+    let name = rest;
+    if (KNOWN_UNITS.includes(first) || KNOWN_UNITS.includes(singular(first))) {
+      unit = singular(first);
+      name = words.slice(1).join(' ');
+    }
+    return { qty: val, unit, name: name.toLowerCase() };
+  };
+
+  const buildShoppingList = () => {
+    const groups = {};
+    generatedMeals.forEach((meal) => {
+      (meal.ingredients || []).forEach((ing) => {
+        const p = parseIngredientDetail(ing);
+        const key = p.name + '|' + p.unit;
+        if (!groups[key]) {
+          groups[key] = { name: p.name, unit: p.unit, qty: 0, hasQty: false, meals: [] };
+        }
+        const g = groups[key];
+        if (p.qty != null) {
+          g.qty += p.qty;
+          g.hasQty = true;
+        }
+        const label = `${meal.day} ${meal.type}`;
+        if (!g.meals.includes(label)) g.meals.push(label);
+      });
+    });
+    const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+    return Object.values(groups)
+      .map((g, i) => ({
+        id: i,
+        display: g.hasQty
+          ? `${cap(g.name)} \u2014 ${fmtQty(Math.round(g.qty * 100) / 100)}${g.unit ? ' ' + g.unit : ''}`
+          : cap(g.name),
+        meals: g.meals,
+      }))
+      .sort((a, b) => a.display.localeCompare(b.display));
+  };
+
+  const openShopping = () => {
+    setShoppingList(null);
+    setCheckedItems({});
+    setShowShopping(true);
+  };
+
+  const copyShoppingList = () => {
+    if (!shoppingList) return;
+    const text = shoppingList
+      .map((i) => `\u2022 ${i.display}`)
+      .join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => alert('Shopping list copied!'),
+        () => alert('Copy failed - long-press to copy manually.')
+      );
+    } else {
+      alert('Copy not supported on this browser.');
+    }
+  };
+
   const calculateTotalCost = () => {
     return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
@@ -497,8 +583,14 @@ Each item in the array MUST strictly follow this JSON schema:
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                      Est. total: ${calculateTotalCost().toFixed(2)}
+                      Total: ${calculateTotalCost().toFixed(2)}
                     </span>
+                    <button
+                      onClick={openShopping}
+                      className="text-xs font-bold px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                    >
+                      \U0001F6D2 List
+                    </button>
                     <button
                       onClick={handleSavePlan}
                       disabled={isSaving}
@@ -520,7 +612,7 @@ Each item in the array MUST strictly follow this JSON schema:
                         <p className="font-bold text-slate-800">{meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}</p>
                         <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                       </div>
-                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
+                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'}</span>
                     </div>
                   ))}
                 </div>
@@ -534,7 +626,7 @@ Each item in the array MUST strictly follow this JSON schema:
                         <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
                           <div>
                             <p className="font-bold text-slate-700">{plan.name}</p>
-                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
+                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ${Number(plan.total_cost || 0).toFixed(2)}</p>
                           </div>
                           <div className="flex gap-1.5">
                             <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
@@ -746,6 +838,83 @@ Each item in the array MUST strictly follow this JSON schema:
         )}
 
       </main>
+
+      {/* SHOPPING LIST MODAL */}
+      {showShopping && (
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-start border-b pb-2">
+              <div>
+                <h3 className="font-bold text-base text-slate-800">\U0001F6D2 Shopping List</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {days} days \u00b7 {generatedMeals.length} meals \u00b7 Est. ${calculateTotalCost().toFixed(2)}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowShopping(false)}
+                className="text-slate-400 hover:text-slate-700 font-bold text-lg px-2"
+              >
+                \u2715
+              </button>
+            </div>
+
+            {!shoppingList ? (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Here's your plan summary: <strong>{generatedMeals.length} meals</strong> over{' '}
+                  <strong>{days} days</strong>, estimated at{' '}
+                  <strong>${calculateTotalCost().toFixed(2)}</strong>.
+                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Happy with it? Generate a consolidated shopping list with quantities combined
+                  across all meals.
+                </p>
+                <button
+                  onClick={() => setShoppingList(buildShoppingList())}
+                  className="w-full bg-sky-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-sky-700"
+                >
+                  Generate Shopping List
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  {shoppingList.length} items \u00b7 tap to check off
+                </p>
+                <ul className="space-y-1.5">
+                  {shoppingList.map((item) => (
+                    <li
+                      key={item.id}
+                      onClick={() => setCheckedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      className={`text-xs p-2 rounded-lg border cursor-pointer flex gap-2 items-start ${
+                        checkedItems[item.id]
+                          ? 'bg-emerald-50 border-emerald-200 text-slate-400 line-through'
+                          : 'bg-slate-50 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <span className="mt-0.5">{checkedItems[item.id] ? '\u2611' : '\u2610'}</span>
+                      <span>
+                        <span className="font-semibold">{item.display}</span>
+                        {item.meals.length > 0 && (
+                          <span className="block text-[10px] text-slate-400 font-normal">
+                            {item.meals.join(', ')}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={copyShoppingList}
+                  className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
+                >
+                  Copy List
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* DETAILED RECIPE MODAL */}
       {selectedRecipe && (
