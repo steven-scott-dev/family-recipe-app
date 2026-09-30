@@ -240,6 +240,11 @@ export default function App() {
 
       alert('Meal plan saved!');
       fetchSavedPlans(family.id);
+      logEvent('plan_saved', {
+        plan_id: plan.id,
+        meals: generatedMeals.length,
+        total_cost: Number(calculateTotalCost().toFixed(2)),
+      });
     } catch (err) {
       console.error('Save plan error:', err);
       alert('Failed to save plan: ' + err.message);
@@ -270,6 +275,7 @@ export default function App() {
       instructions: m.instructions
     })));
     setActiveTab('meal_planning');
+    logEvent('plan_loaded', { plan_id: planId, meals: (data || []).length });
   }
 
   async function handleDeletePlan(planId) {
@@ -278,6 +284,17 @@ export default function App() {
     if (error) return alert('Failed to delete plan: ' + error.message);
     setSavedPlans(savedPlans.filter(p => p.id !== planId));
   }
+
+  // Analytics: fire-and-forget event log (never breaks the app if the table is missing)
+  const logEvent = async (eventType, meta = {}) => {
+    try {
+      const uid = session?.user?.id;
+      if (!uid) return;
+      await supabase.from('plan_events').insert([{ user_id: uid, event_type: eventType, meta }]);
+    } catch (e) {
+      console.warn('analytics log failed:', e.message);
+    }
+  };
 
   // AI-Powered Meal Generator
   const generateAIMealPlan = async () => {
@@ -399,6 +416,12 @@ Each item in the array MUST strictly follow this JSON schema:
       setGeneratedMeals(bestPlan);
       setAllergyWarnings(scanAllergies(bestPlan, allAllergies));
       setDuplicateNotes(findDuplicateTitles(bestPlan));
+      logEvent('plan_generated', {
+        meals: bestPlan.length,
+        total_cost: Number(bestTotal.toFixed(2)),
+        days,
+        meals_per_day: mealsPerDay,
+      });
     } catch (err) {
       console.error('AI Generation Error:', err);
       alert('Failed to generate AI meal plan: ' + err.message);
