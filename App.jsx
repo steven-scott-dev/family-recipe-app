@@ -254,7 +254,7 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -352,13 +352,69 @@ Each item in the array MUST strictly follow this JSON schema:
       if (!parsedPlan) {
         throw lastErr || new Error('AI returned invalid data after 3 attempts');
       }
-      setGeneratedMeals(parsedPlan);
+      const familySize = members.length || 1;
+      const normalizedPlan = parsedPlan.map((m) => {
+        const n = parseServings(m.servings) || familySize;
+        return {
+          ...m,
+          servings: `${n} servings`,
+          baseServings: n,
+          baseIngredients: m.ingredients || []
+        };
+      });
+      setGeneratedMeals(normalizedPlan);
     } catch (err) {
       console.error('AI Generation Error:', err);
       alert('Failed to generate AI meal plan: ' + err.message);
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const parseServings = (s) => {
+    if (typeof s === 'number') return s;
+    const m = String(s || '').match(/(\d*\.?\d+)/);
+    return m ? parseFloat(m[1]) : null;
+  };
+
+  const scaleIngredient = (item, factor) => {
+    const m = String(item).match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)/);
+    if (!m) return item;
+    const q = m[1].trim();
+    let val = 0;
+    const parts = q.split(/\s+/);
+    for (const p of parts) {
+      if (p.includes('/')) {
+        const frac = p.split('/');
+        val += parseFloat(frac[0]) / parseFloat(frac[1]);
+      } else {
+        val += parseFloat(p);
+      }
+    }
+    const scaled = val * factor;
+    const pretty = Number.isInteger(scaled) ? String(scaled) : String(Math.round(scaled * 4) / 4);
+    return item.replace(m[0], pretty);
+  };
+
+  const adjustServings = (delta) => {
+    const meal = selectedRecipe;
+    if (!meal) return;
+    const base = meal.baseServings || parseServings(meal.servings) || 1;
+    const current = parseServings(meal.servings) || base;
+    const next = Math.max(1, current + delta);
+    if (next === current) return;
+    const factor = next / base;
+    const baseIngredients = meal.baseIngredients || meal.ingredients || [];
+    const scaledIngredients = baseIngredients.map((i) => scaleIngredient(i, factor));
+    const updated = { ...meal, servings: `${next} servings`, ingredients: scaledIngredients };
+    setSelectedRecipe(updated);
+    setGeneratedMeals((prev) =>
+      prev.map((m) =>
+        m.day === meal.day && m.type === meal.type && m.title === meal.title
+          ? { ...m, servings: `${next} servings`, ingredients: scaledIngredients }
+          : m
+      )
+    );
   };
 
   const calculateTotalCost = () => {
@@ -698,8 +754,11 @@ Each item in the array MUST strictly follow this JSON schema:
                   <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     ⏱️ {selectedRecipe.prepTime || '15-20 mins'}
                   </span>
-                  <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                    🍽️ {selectedRecipe.servings || '2-4 servings'}
+                  <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                    🍽️
+                    <button onClick={() => adjustServings(-1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">−</button>
+                    <span>{selectedRecipe.servings || '2-4 servings'}</span>
+                    <button onClick={() => adjustServings(1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">+</button>
                   </span>
                 </div>
               </div>
