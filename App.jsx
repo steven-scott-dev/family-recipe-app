@@ -718,7 +718,7 @@ Requirements:
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow space-y-4">
           <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-800">Family Recipe & Meal Planner</h1>
+            <h1 className="text-xl font-bold text-slate-800">SupperLine</h1>
             <p className="text-xs text-slate-500 mt-1">Sign in to access your family's meal plans</p>
           </div>
           {authSent ? (
@@ -767,8 +767,8 @@ Requirements:
       <header className="bg-slate-900 text-white p-4 shadow-md">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="text-center flex-1">
-            <h1 className="text-xl font-bold tracking-wide">Family Recipe & Meal Planner</h1>
-            <p className="text-xs text-slate-400 mt-0.5">AI-Powered Personalized Nutrition</p>
+            <h1 className="text-xl font-bold tracking-wide">SupperLine</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Dinner, decided.</p>
           </div>
           <button
             onClick={handleLogout}
