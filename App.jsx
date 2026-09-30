@@ -354,12 +354,16 @@ Each item in the array MUST strictly follow this JSON schema:
       }
       const familySize = members.length || 1;
       const normalizedPlan = parsedPlan.map((m) => {
-        const n = parseServings(m.servings) || familySize;
+        // Enforce family size in code — the model doesn't reliably follow the prompt.
+        const aiServings = parseServings(m.servings) || familySize;
+        const factor = aiServings === familySize ? 1 : familySize / aiServings;
+        const scaledIngredients = (m.ingredients || []).map((i) => scaleIngredient(i, factor));
         return {
           ...m,
-          servings: `${n} servings`,
-          baseServings: n,
-          baseIngredients: m.ingredients || []
+          servings: `${familySize} servings`,
+          baseServings: familySize,
+          baseIngredients: scaledIngredients,
+          ingredients: scaledIngredients
         };
       });
       setGeneratedMeals(normalizedPlan);
