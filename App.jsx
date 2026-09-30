@@ -645,6 +645,7 @@ Each item in the array MUST strictly follow this JSON schema:
               Check your email for the sign-in link — it may take a minute to arrive.
             </p>
           ) : (
+            <>
             <form onSubmit={handleLogin} className="space-y-3">
               <input
                 type="email"
@@ -672,6 +673,7 @@ Each item in the array MUST strictly follow this JSON schema:
             >
               Sign in with Google
             </button>
+            </>
           )}
         </div>
       </div>
