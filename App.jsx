@@ -188,6 +188,7 @@ export default function App() {
         price: m.price ?? null,
         prep_time: m.prepTime || null,
         servings: m.servings || null,
+        nutrition: m.nutrition || null,
         ingredients: m.ingredients || [],
         instructions: m.instructions || []
       }));
@@ -219,6 +220,7 @@ export default function App() {
       price: m.price,
       prepTime: m.prep_time,
       servings: m.servings,
+      nutrition: m.nutrition || null,
       ingredients: m.ingredients,
       instructions: m.instructions
     })));
@@ -258,7 +260,7 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -269,6 +271,7 @@ Each item in the array MUST strictly follow this JSON schema:
     "price": 8.50,
     "prepTime": "15 mins",
     "servings": "4 servings",
+    "nutrition": { "calories": 520, "protein": "32g", "carbs": "45g", "fat": "20g", "fiber": "6g", "sodium": "680mg" },
     "ingredients": [
       "2 cups Almond Milk",
       "1 tsp Garlic Powder"
@@ -589,7 +592,7 @@ Each item in the array MUST strictly follow this JSON schema:
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                      Total: ${calculateTotalCost().toFixed(2)}
+                      Est. total: ${calculateTotalCost().toFixed(2)}
                     </span>
                     <button
                       onClick={openShopping}
@@ -618,7 +621,7 @@ Each item in the array MUST strictly follow this JSON schema:
                         <p className="font-bold text-slate-800">{meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}</p>
                         <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                       </div>
-                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'}</span>
+                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
                     </div>
                   ))}
                 </div>
@@ -632,7 +635,7 @@ Each item in the array MUST strictly follow this JSON schema:
                         <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
                           <div>
                             <p className="font-bold text-slate-700">{plan.name}</p>
-                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ${Number(plan.total_cost || 0).toFixed(2)}</p>
+                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
                           </div>
                           <div className="flex gap-1.5">
                             <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
@@ -948,6 +951,32 @@ Each item in the array MUST strictly follow this JSON schema:
                 ✕
               </button>
             </div>
+
+            {selectedRecipe.nutrition && (
+              <div>
+                <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Nutrition <span className="font-normal normal-case">(per serving, est.)</span></h4>
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <div className="text-center border-b border-slate-200 pb-1.5 mb-1.5">
+                    <span className="text-2xl font-extrabold text-slate-800">{selectedRecipe.nutrition.calories || '\u2013'}</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">cal</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 text-center">
+                    {[
+                      ['Protein', selectedRecipe.nutrition.protein],
+                      ['Carbs', selectedRecipe.nutrition.carbs],
+                      ['Fat', selectedRecipe.nutrition.fat],
+                      ['Fiber', selectedRecipe.nutrition.fiber],
+                      ['Sodium', selectedRecipe.nutrition.sodium],
+                    ].map(([label, val]) => (
+                      <div key={label} className="bg-white rounded px-1 py-1 border border-slate-100">
+                        <div className="text-xs font-bold text-slate-700">{val || '\u2013'}</div>
+                        <div className="text-[10px] text-slate-400">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Ingredients & Quantities</h4>
