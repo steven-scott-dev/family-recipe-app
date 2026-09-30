@@ -4,6 +4,10 @@ import { supabase } from './supabaseClient';
 export default function App() {
   const [activeTab, setActiveTab] = useState('meal_planning');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authSent, setAuthSent] = useState(false);
   const [showShopping, setShowShopping] = useState(false);
   const [shoppingList, setShoppingList] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
@@ -37,10 +41,36 @@ export default function App() {
   const dietOptions = ['Keto', 'Gluten-Free', 'Vegetarian', 'Vegan', 'Paleo', 'Dairy-Free', 'Low-Carb'];
   const allergyOptions = ['Peanuts', 'Tree Nuts', 'Dairy', 'Gluten', 'Eggs', 'Soy', 'Shellfish'];
 
-  // Load existing family and members from Supabase on mount
+  // Auth session
   useEffect(() => {
-    fetchFamilyData();
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Load existing family and members once signed in
+  useEffect(() => {
+    if (session) fetchFamilyData();
+  }, [session]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!authEmail.trim()) return;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: authEmail.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) alert('Sign-in failed: ' + error.message);
+    else setAuthSent(true);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+  };
 
   async function fetchFamilyData() {
     try {
@@ -82,7 +112,7 @@ export default function App() {
     e.preventDefault();
     const { data, error } = await supabase
       .from('families')
-      .upsert({ id: family.id, name: family.name, weekly_budget: family.weekly_budget })
+      .upsert({ id: family.id, name: family.name, weekly_budget: family.weekly_budget, user_id: session?.user?.id })
       .select()
       .single();
 
@@ -104,7 +134,7 @@ export default function App() {
     if (!currentFamilyId) {
       const { data: newFam, error: famError } = await supabase
         .from('families')
-        .upsert({ name: family.name, weekly_budget: family.weekly_budget })
+        .upsert({ name: family.name, weekly_budget: family.weekly_budget, user_id: session?.user?.id })
         .select()
         .single();
 
@@ -172,6 +202,7 @@ export default function App() {
         .from('meal_plans')
         .insert([{
           family_id: family.id,
+          user_id: session?.user?.id,
           name: `Plan ${new Date().toLocaleDateString()}`,
           days,
           meals_per_day: mealsPerDay,
@@ -241,11 +272,6 @@ export default function App() {
 
   // AI-Powered Meal Generator
   const generateAIMealPlan = async () => {
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!apiKey) {
-      return alert('Groq API Key is missing! Add VITE_GROQ_API_KEY in Vercel settings.');
-    }
-
     setIsGenerating(true);
     setAllergyWarnings([]);
     setDuplicateNotes([]);
@@ -291,24 +317,6 @@ Each item in the array MUST strictly follow this JSON schema:
 ]`;
 
     try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7
-        })
-      });
-
-      const rawResult = await response.json();
-      if (rawResult.error) {
-        throw new Error(rawResult.error.message);
-      }
-
       const parseJsonLenient = (text) => {
         const t = text.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
         try {
@@ -337,27 +345,13 @@ Each item in the array MUST strictly follow this JSON schema:
       let lastErr = null;
       for (let attempt = 1; attempt <= 3 && !parsedPlan; attempt++) {
         try {
-          const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-              model: 'openai/gpt-oss-120b',
-              messages: [{ role: 'user', content: prompt }],
-              temperature: 0.7,
-              max_tokens: 8000,
-              response_format: { type: 'json_object' }
-            })
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-meals', {
+            body: { prompt },
           });
+          if (fnError) throw new Error(fnError.message);
+          if (fnData && fnData.error) throw new Error(fnData.error);
 
-          const rawResult = await apiResponse.json();
-          if (rawResult.error) {
-            throw new Error(rawResult.error.message);
-          }
-
-          parsedPlan = normalizePlan(parseJsonLenient(rawResult.choices[0].message.content));
+          parsedPlan = normalizePlan(parseJsonLenient(fnData.content));
         } catch (err) {
           lastErr = err;
           console.warn(`Meal plan generation attempt ${attempt} failed:`, err.message);
@@ -622,12 +616,65 @@ Each item in the array MUST strictly follow this JSON schema:
     return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <p className="text-slate-500 text-sm">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow space-y-4">
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-slate-800">Family Recipe & Meal Planner</h1>
+            <p className="text-xs text-slate-500 mt-1">Sign in to access your family's meal plans</p>
+          </div>
+          {authSent ? (
+            <p className="text-sm text-slate-600 text-center">
+              Check your email for the sign-in link — it may take a minute to arrive.
+            </p>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-bold"
+              >
+                Send sign-in link
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20">
       {/* Top Header */}
-      <header className="bg-slate-900 text-white p-4 text-center shadow-md">
-        <h1 className="text-xl font-bold tracking-wide">Family Recipe & Meal Planner</h1>
-        <p className="text-xs text-slate-400 mt-0.5">AI-Powered Personalized Nutrition</p>
+      <header className="bg-slate-900 text-white p-4 shadow-md">
+        <div className="flex items-center justify-between max-w-md mx-auto">
+          <div className="text-center flex-1">
+            <h1 className="text-xl font-bold tracking-wide">Family Recipe & Meal Planner</h1>
+            <p className="text-xs text-slate-400 mt-0.5">AI-Powered Personalized Nutrition</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-slate-300 hover:text-white border border-slate-600 rounded px-2 py-1 ml-2 shrink-0"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       {/* Main Container */}
