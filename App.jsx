@@ -7,6 +7,7 @@ export default function App() {
   const [showShopping, setShowShopping] = useState(false);
   const [shoppingList, setShoppingList] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
+  const [allergyWarnings, setAllergyWarnings] = useState([]);
   const [shoppingRange, setShoppingRange] = useState('');
 
   // Family State
@@ -245,38 +246,12 @@ export default function App() {
     }
 
     setIsGenerating(true);
+    setAllergyWarnings([]);
 
     // Compile constraints from family roster
     const allDiets = Array.from(new Set(members.flatMap(m => m.dietary_preferences || [])));
     const allAllergies = Array.from(new Set(members.flatMap(m => m.allergies || [])));
     const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
-
-    // Ratings feedback loop: learn from past meal ratings
-    let bannedMeals = [];
-    let favoriteMeals = [];
-    try {
-      const { data: ratedMeals, error: ratingsError } = await supabase
-        .from('meals')
-        .select('title, ratings');
-      if (!ratingsError && ratedMeals) {
-        const byTitle = {};
-        ratedMeals.forEach((m) => {
-          const vals = Object.values(m.ratings || {});
-          if (!vals.length) return;
-          const key = String(m.title || '').toLowerCase().trim();
-          if (!key) return;
-          if (!byTitle[key]) byTitle[key] = { title: m.title, sum: 0, n: 0 };
-          vals.forEach((v) => { byTitle[key].sum += v; byTitle[key].n += 1; });
-        });
-        Object.values(byTitle).forEach((t) => {
-          const avg = t.sum / t.n;
-          if (avg <= 2) bannedMeals.push(t.title);
-          else if (avg >= 4.5) favoriteMeals.push(t.title);
-        });
-      }
-    } catch (e) {
-      console.warn('Ratings feedback skipped:', e.message);
-    }
 
     const prompt = `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
@@ -290,8 +265,7 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). ${bannedMeals.length ? `\nNEVER generate any of these disliked meals (the family rated them 2 stars or fewer): ${bannedMeals.slice(0, 20).join('; ')}.` : ''}${favoriteMeals.length ? `\nThe family loves these meals (rated 4.5+ stars) - include them or take inspiration from them: ${favoriteMeals.slice(0, 10).join('; ')}.` : ''}
-Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -405,6 +379,7 @@ Each item in the array MUST strictly follow this JSON schema:
         };
       });
       setGeneratedMeals(normalizedPlan);
+      setAllergyWarnings(scanAllergies(normalizedPlan, allAllergies));
     } catch (err) {
       console.error('AI Generation Error:', err);
       alert('Failed to generate AI meal plan: ' + err.message);
@@ -570,6 +545,61 @@ Each item in the array MUST strictly follow this JSON schema:
     }
   };
 
+  const ALLERGEN_SYNONYMS = {
+    peanut: ['peanut'],
+    'tree nut': ['almond', 'walnut', 'cashew', 'pecan', 'pistachio', 'hazelnut', 'brazil', 'macadamia'],
+    nut: ['almond', 'walnut', 'cashew', 'pecan', 'pistachio', 'hazelnut', 'peanut'],
+    milk: ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'dairy', 'whey'],
+    dairy: ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'dairy', 'whey'],
+    egg: ['egg'],
+    soy: ['soy', 'tofu', 'miso', 'tamari'],
+    wheat: ['wheat', 'flour', 'bread', 'pasta'],
+    gluten: ['wheat', 'flour', 'bread', 'pasta', 'barley', 'rye'],
+    fish: ['fish', 'tuna', 'salmon', 'cod', 'tilapia'],
+    shellfish: ['shrimp', 'crab', 'lobster', 'clam', 'mussel', 'oyster', 'scallop'],
+    sesame: ['sesame', 'tahini'],
+  };
+
+  const wordHit = (text, term) => {
+    try {
+      return new RegExp('\\b' + term + 's?\\b').test(text);
+    } catch (e) {
+      return text.includes(term);
+    }
+  };
+
+  const ingredientHasAllergen = (ingredient, allergy) => {
+    const ing = String(ingredient).toLowerCase();
+    const a = String(allergy).toLowerCase().trim();
+    if (!a) return false;
+    if (a.split(/\s+/).some((w) => w.length > 2 && wordHit(ing, w))) return true;
+    for (const key of Object.keys(ALLERGEN_SYNONYMS)) {
+      if (a.includes(key) && ALLERGEN_SYNONYMS[key].some((s) => wordHit(ing, s))) return true;
+    }
+    return false;
+  };
+
+  const scanAllergies = (meals, allergies) => {
+    const hits = [];
+    (meals || []).forEach((meal) => {
+      (meal.ingredients || []).forEach((ing) => {
+        (allergies || []).forEach((allergy) => {
+          if (ingredientHasAllergen(ing, allergy)) {
+            hits.push({
+              key: `${meal.day}|${meal.type}|${meal.title}`,
+              day: meal.day,
+              type: meal.type,
+              title: meal.title,
+              ingredient: ing,
+              allergy,
+            });
+          }
+        });
+      });
+    });
+    return hits;
+  };
+
   const calculateTotalCost = () => {
     return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
@@ -642,6 +672,19 @@ Each item in the array MUST strictly follow this JSON schema:
             {/* Generated Recipes List */}
             {generatedMeals.length > 0 && (
               <div className="space-y-2">
+                {allergyWarnings.length > 0 && (
+                  <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-lg text-xs space-y-1">
+                    <p className="font-bold">⚠️ Allergen alert — {allergyWarnings.length} possible issue{allergyWarnings.length > 1 ? 's' : ''} found:</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {allergyWarnings.map((w, i) => (
+                        <li key={i}>
+                          <strong>{w.day} {w.type}</strong> ({w.title}): “{w.ingredient}” may contain <strong>{w.allergy}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-red-600 font-semibold">Review these meals or regenerate before cooking.</p>
+                  </div>
+                )}
                 <div className="flex justify-between items-center px-1">
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
                   <div className="flex items-center gap-2">
@@ -667,6 +710,7 @@ Each item in the array MUST strictly follow this JSON schema:
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                   {generatedMeals.map((meal, idx) => {
                     const avg = avgRating(meal);
+                    const flagged = allergyWarnings.some((w) => w.key === `${meal.day}|${meal.type}|${meal.title}`);
                     return (
                     <div 
                       key={idx} 
@@ -674,7 +718,10 @@ Each item in the array MUST strictly follow this JSON schema:
                       className="bg-white p-3 rounded-lg border border-slate-200 text-xs flex justify-between items-center shadow-sm cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/40 transition"
                     >
                       <div>
-                        <p className="font-bold text-slate-800">{meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}</p>
+                        <p className="font-bold text-slate-800">
+                          {flagged && <span className="text-red-500 mr-1">⚠️</span>}
+                          {meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}
+                        </p>
                         <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                       </div>
                       <span className="text-right ml-2 shrink-0">
