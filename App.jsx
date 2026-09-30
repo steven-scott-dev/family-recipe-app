@@ -714,6 +714,19 @@ Each item in the array MUST strictly follow this JSON schema:
                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
                       Est. total: ${calculateTotalCost().toFixed(2)}
                     </span>
+                    {(() => {
+                      const budget = Number(family.weekly_budget) || 0;
+                      if (!budget) return null;
+                      const total = calculateTotalCost();
+                      const over = total > budget;
+                      return (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${over ? 'bg-red-100 text-red-700' : 'bg-sky-100 text-sky-700'}`}>
+                          {over
+                            ? `Over budget by $${(total - budget).toFixed(2)}`
+                            : `$${(budget - total).toFixed(2)} under budget`}
+                        </span>
+                      );
+                    })()}
                     <button
                       onClick={openShopping}
                       className="text-xs font-bold px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
@@ -729,6 +742,22 @@ Each item in the array MUST strictly follow this JSON schema:
                     </button>
                   </div>
                 </div>
+                {(() => {
+                  const budget = Number(family.weekly_budget) || 0;
+                  if (!budget || !generatedMeals.length) return null;
+                  const pct = (calculateTotalCost() / budget) * 100;
+                  const barColor = pct > 100 ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-emerald-500';
+                  return (
+                    <div className="px-1">
+                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 text-right">
+                        {Math.round(pct)}% of ${budget}/week budget
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                   {generatedMeals.map((meal, idx) => {
