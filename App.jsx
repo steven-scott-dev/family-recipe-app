@@ -289,11 +289,15 @@ export default function App() {
     const allDiets = Array.from(new Set(members.flatMap(m => m.dietary_preferences || [])));
     const allAllergies = Array.from(new Set(members.flatMap(m => m.allergies || [])));
     const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
+    const familySize = members.length || 1;
+    const budget = Number(family.weekly_budget) || 150;
 
-    const prompt = `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
+    const buildPrompt = (prevTotal) => `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
 Family Profile:
-- Total Family Members: ${members.length || 1} - Weekly Grocery Budget Target:$${family.weekly_budget || 150} - Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
+- Total Family Members: ${familySize}
+- HARD WEEKLY BUDGET CEILING: $${budget}. The SUM of the price field across ALL meals in the entire plan MUST be less than or equal to $${budget}. This is non-negotiable - treat it as the single most important constraint, above variety.
+- Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
 - CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}
 - Disliked Foods to Exclude: ${allDislikes.length ? allDislikes.join(', ') : 'None'}
 
@@ -303,6 +307,7 @@ Meal Schedule Request:
 
 Instructions:
 Respond ONLY with a valid JSON array of meal objects.\nCRITICAL: every meal title must be unique across the entire plan - never repeat a recipe, no duplicates across days or meal types.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+To stay under the $${budget} ceiling: prefer affordable proteins (chicken thighs, beans, lentils, eggs, ground turkey, pork shoulder), reuse ingredients across multiple meals to reduce waste, choose seasonal produce, and avoid expensive items (steak, salmon, shrimp, specialty cheeses) unless the budget clearly allows.\n${prevTotal ? `CORRECTION - YOUR PREVIOUS PLAN FAILED BUDGET: it totaled $${prevTotal.toFixed(2)}, which EXCEEDS the $${budget} ceiling. Regenerate the ENTIRE plan significantly cheaper: swap every expensive protein for an affordable one and simplify side dishes.` : ''}
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -350,27 +355,7 @@ Each item in the array MUST strictly follow this JSON schema:
         throw new Error('AI response was not a meal array');
       };
 
-      let parsedPlan = null;
-      let lastErr = null;
-      for (let attempt = 1; attempt <= 3 && !parsedPlan; attempt++) {
-        try {
-          const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-meals', {
-            body: { prompt },
-          });
-          if (fnError) throw new Error(fnError.message);
-          if (fnData && fnData.error) throw new Error(fnData.error);
-
-          parsedPlan = normalizePlan(parseJsonLenient(fnData.content));
-        } catch (err) {
-          lastErr = err;
-          console.warn(`Meal plan generation attempt ${attempt} failed:`, err.message);
-        }
-      }
-      if (!parsedPlan) {
-        throw lastErr || new Error('AI returned invalid data after 3 attempts');
-      }
-      const familySize = members.length || 1;
-      const normalizedPlan = parsedPlan.map((m) => {
+      const normalizeMeals = (parsed) => parsed.map((m) => {
         // Enforce family size in code — the model doesn't reliably follow the prompt.
         const aiServings = parseServings(m.servings) || familySize;
         const factor = aiServings === familySize ? 1 : familySize / aiServings;
@@ -383,9 +368,37 @@ Each item in the array MUST strictly follow this JSON schema:
           ingredients: scaledIngredients
         };
       });
-      setGeneratedMeals(normalizedPlan);
-      setAllergyWarnings(scanAllergies(normalizedPlan, allAllergies));
-      setDuplicateNotes(findDuplicateTitles(normalizedPlan));
+      const planTotal = (plan) => plan.reduce((s, m) => s + (Number(m.price) || 0), 0);
+
+      let bestPlan = null;
+      let bestTotal = Infinity;
+      let lastErr = null;
+      let prevTotal = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-meals', {
+            body: { prompt: buildPrompt(prevTotal) },
+          });
+          if (fnError) throw new Error(fnError.message);
+          if (fnData && fnData.error) throw new Error(fnData.error);
+
+          const normalized = normalizeMeals(normalizePlan(parseJsonLenient(fnData.content)));
+          const total = planTotal(normalized);
+          if (total < bestTotal) { bestTotal = total; bestPlan = normalized; }
+          if (total <= budget) break; // under budget — done
+          prevTotal = total;
+          console.warn(`Plan attempt ${attempt} cost $${total.toFixed(2)} (budget $${budget}) - retrying cheaper`);
+        } catch (err) {
+          lastErr = err;
+          console.warn(`Meal plan generation attempt ${attempt} failed:`, err.message);
+        }
+      }
+      if (!bestPlan) {
+        throw lastErr || new Error('AI returned invalid data after 3 attempts');
+      }
+      setGeneratedMeals(bestPlan);
+      setAllergyWarnings(scanAllergies(bestPlan, allAllergies));
+      setDuplicateNotes(findDuplicateTitles(bestPlan));
     } catch (err) {
       console.error('AI Generation Error:', err);
       alert('Failed to generate AI meal plan: ' + err.message);
@@ -636,6 +649,7 @@ Requirements:
 - CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}. The previous recipe was flagged because "${warn.ingredient}" may contain ${warn.allergy} - do NOT use that ingredient or anything containing it.
 - Do NOT reuse any of these titles already in the plan: ${usedTitles || 'none yet'}.
 - Include per-serving nutrition estimates in a nutrition object {calories, protein, carbs, fat, fiber, sodium}.
+- Keep this meal affordable: aim for a price at or under $${(Number(family.weekly_budget) / (days * mealsPerDay)).toFixed(2)}.
 - Estimate price using realistic 2026 Knoxville, TN supermarket prices.
 - Respond ONLY with the JSON array, no markdown, no backticks. Schema:
 [{"day":"${warn.day}","type":"${warn.type}","title":"Recipe Title","displayTitle":"${warn.day} ${warn.type}: Recipe Title","price":8.50,"prepTime":"15 mins","servings":"${familySize} servings","nutrition":{"calories":520,"protein":"32g","carbs":"45g","fat":"20g","fiber":"6g","sodium":"680mg"},"ingredients":["2 cups Almond Milk"],"instructions":["Step 1..."]}]`;
