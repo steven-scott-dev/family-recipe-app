@@ -24,6 +24,8 @@ export default function App() {
   const [memberName, setMemberName] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
   const [isManaged, setIsManaged] = useState(true);
+  const [memberAge, setMemberAge] = useState('');
+  const [memberRole, setMemberRole] = useState('parent');
   const [selectedDiet, setSelectedDiet] = useState([]);
   const [selectedAllergies, setSelectedAllergies] = useState([]);
   const [dislikesText, setDislikesText] = useState('');
@@ -163,7 +165,9 @@ export default function App() {
       email: isManaged ? null : memberEmail,
       dietary_preferences: selectedDiet,
       allergies: selectedAllergies,
-      dislikes: dislikesText.split(',').map(s => s.trim()).filter(Boolean)
+      dislikes: dislikesText.split(',').map(s => s.trim()).filter(Boolean),
+      age: memberAge ? Number(memberAge) : null,
+      role: memberRole
     };
 
     const { data, error } = await supabase
@@ -183,6 +187,8 @@ export default function App() {
       setSelectedDiet([]);
       setSelectedAllergies([]);
       setDislikesText('');
+      setMemberAge('');
+      setMemberRole('parent');
       alert('Family member added successfully!');
     }
   }
@@ -308,11 +314,19 @@ export default function App() {
     const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
     const familySize = members.length || 1;
     const budget = Number(family.weekly_budget) || 150;
+    const memberDesc = members.map((m) => {
+      const bits = [m.name || 'Member'];
+      if (m.role) bits.push(m.role);
+      if (m.age) bits.push(`age ${m.age}`);
+      return bits.join(', ');
+    }).join('; ') || 'not specified';
+    const hasYoungChild = members.some((m) => m.role === 'child' && m.age && Number(m.age) < 12);
 
     const buildPrompt = (prevTotal) => `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
 Family Profile:
 - Total Family Members: ${familySize}
+- Members: ${memberDesc}${hasYoungChild ? ' - NOTE: a young child is in the family - use kid-appropriate portion sizes and kid-friendly flavors for their share.' : ''}
 - HARD WEEKLY BUDGET CEILING: $${budget}. The SUM of the price field across ALL meals in the entire plan MUST be less than or equal to $${budget}. This is non-negotiable - treat it as the single most important constraint, above variety.
 - Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
 - CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}
@@ -1069,6 +1083,40 @@ Requirements:
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Age</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    value={memberAge}
+                    onChange={(e) => setMemberAge(e.target.value)}
+                    placeholder="e.g. 6"
+                    className="w-full border rounded p-2 text-sm bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Role</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMemberRole('parent')}
+                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'parent' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                    >
+                      Parent
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMemberRole('child')}
+                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'child' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                    >
+                      Child
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Member Type</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1167,7 +1215,11 @@ Requirements:
                 {members.map(member => (
                   <div key={member.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 space-y-1">
                     <div className="flex justify-between items-center">
-                      <h3 className="font-bold text-sm text-slate-800">{member.name}</h3>
+                      <h3 className="font-bold text-sm text-slate-800">
+                        {member.name}
+                        {member.age ? <span className="font-normal text-slate-500"> · {member.age}y</span> : null}
+                        {member.role ? <span className="font-normal text-slate-500"> · {member.role}</span> : null}
+                      </h3>
                       <span className={`text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded ${member.is_managed ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                         {member.is_managed ? 'Managed' : 'Account Member'}
                       </span>
