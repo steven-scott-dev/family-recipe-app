@@ -1087,25 +1087,7 @@ Requirements:
                   </div>
                 )}
 
-                {/* Grocery Integration */}
-                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 pt-3">
-                  <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Export to Grocery Cart</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button 
-                      onClick={() => alert('Sending ingredients to Walmart OPD Cart...')}
-                      className="bg-blue-600 text-white py-2 rounded font-semibold text-xs hover:bg-blue-700 transition"
-                    >
-                      Order via Walmart
-                    </button>
-                    <button 
-                      onClick={() => alert('Redirecting to Instacart Developer Cart...')}
-                      className="bg-orange-600 text-white py-2 rounded font-semibold text-xs hover:bg-orange-700 transition"
-                    >
-                      Order via Instacart
-                    </button>
-                  </div>
-                </div>
-              </div>
+                              </div>
             )}
           </div>
         )}
