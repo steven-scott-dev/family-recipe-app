@@ -13,6 +13,7 @@ export default function App() {
   const [checkedItems, setCheckedItems] = useState({});
   const [allergyWarnings, setAllergyWarnings] = useState([]);
   const [duplicateNotes, setDuplicateNotes] = useState([]);
+  const [regeneratingKey, setRegeneratingKey] = useState(null);
   const [shoppingRange, setShoppingRange] = useState('');
 
   // Family State
@@ -620,6 +621,86 @@ Each item in the array MUST strictly follow this JSON schema:
     return dupes;
   };
 
+  const regenerateSingleMeal = async (warn) => {
+    const key = warn.key;
+    setRegeneratingKey(key);
+    try {
+      const familySize = members.length || 1;
+      const allAllergies = Array.from(new Set(members.flatMap((m) => m.allergies || [])));
+      const usedTitles = generatedMeals.map((m) => m.title).filter(Boolean).join('; ');
+      const singlePrompt = `You are a professional nutritionist and meal planning assistant. Generate EXACTLY ONE replacement meal, returned as a JSON array with a single object.
+
+Requirements:
+- Day: ${warn.day}, meal type: ${warn.type}
+- Servings: exactly ${familySize} (e.g. "${familySize} servings")
+- CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}. The previous recipe was flagged because "${warn.ingredient}" may contain ${warn.allergy} - do NOT use that ingredient or anything containing it.
+- Do NOT reuse any of these titles already in the plan: ${usedTitles || 'none yet'}.
+- Include per-serving nutrition estimates in a nutrition object {calories, protein, carbs, fat, fiber, sodium}.
+- Estimate price using realistic 2026 Knoxville, TN supermarket prices.
+- Respond ONLY with the JSON array, no markdown, no backticks. Schema:
+[{"day":"${warn.day}","type":"${warn.type}","title":"Recipe Title","displayTitle":"${warn.day} ${warn.type}: Recipe Title","price":8.50,"prepTime":"15 mins","servings":"${familySize} servings","nutrition":{"calories":520,"protein":"32g","carbs":"45g","fat":"20g","fiber":"6g","sodium":"680mg"},"ingredients":["2 cups Almond Milk"],"instructions":["Step 1..."]}]`;
+
+      const parseOne = (text) => {
+        const t = text.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+        let parsed;
+        try {
+          parsed = JSON.parse(t);
+        } catch (e) {
+          const start = t.search(/[[{]/);
+          const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+          if (start === -1 || end <= start) throw e;
+          parsed = JSON.parse(t.slice(start, end + 1));
+        }
+        if (Array.isArray(parsed) && parsed.length) return parsed[0];
+        if (parsed && typeof parsed === 'object') {
+          const arr = Object.values(parsed).find((v) => Array.isArray(v));
+          if (arr && arr.length) return arr[0];
+        }
+        throw new Error('AI did not return a meal');
+      };
+
+      let replacement = null;
+      let lastErr = null;
+      for (let attempt = 1; attempt <= 3 && !replacement; attempt++) {
+        try {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-meals', {
+            body: { prompt: singlePrompt },
+          });
+          if (fnError) throw new Error(fnError.message);
+          if (fnData && fnData.error) throw new Error(fnData.error);
+          replacement = parseOne(fnData.content);
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      if (!replacement) throw lastErr || new Error('AI returned invalid data');
+
+      const aiServings = parseServings(replacement.servings) || familySize;
+      const factor = aiServings === familySize ? 1 : familySize / aiServings;
+      const scaledIngredients = (replacement.ingredients || []).map((i) => scaleIngredient(i, factor));
+      const newMeal = {
+        ...replacement,
+        day: warn.day,
+        type: warn.type,
+        displayTitle: `${warn.day} ${warn.type}: ${replacement.title}`,
+        servings: `${familySize} servings`,
+        baseServings: familySize,
+        baseIngredients: scaledIngredients,
+        ingredients: scaledIngredients,
+      };
+      const updated = generatedMeals.map((m) =>
+        m.day === warn.day && m.type === warn.type && m.title === warn.title ? newMeal : m
+      );
+      setGeneratedMeals(updated);
+      setAllergyWarnings(scanAllergies(updated, allAllergies));
+      setDuplicateNotes(findDuplicateTitles(updated));
+    } catch (err) {
+      alert('Failed to regenerate meal: ' + err.message);
+    } finally {
+      setRegeneratingKey(null);
+    }
+  };
+
   const calculateTotalCost = () => {
     return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
@@ -763,8 +844,17 @@ Each item in the array MUST strictly follow this JSON schema:
                     <p className="font-bold">⚠️ Allergen alert — {allergyWarnings.length} possible issue{allergyWarnings.length > 1 ? 's' : ''} found:</p>
                     <ul className="list-disc list-inside space-y-0.5">
                       {allergyWarnings.map((w, i) => (
-                        <li key={i}>
-                          <strong>{w.day} {w.type}</strong> ({w.title}): “{w.ingredient}” may contain <strong>{w.allergy}</strong>
+                        <li key={i} className="flex items-start justify-between gap-2">
+                          <span>
+                            <strong>{w.day} {w.type}</strong> ({w.title}): “{w.ingredient}” may contain <strong>{w.allergy}</strong>
+                          </span>
+                          <button
+                            onClick={() => regenerateSingleMeal(w)}
+                            disabled={regeneratingKey === w.key}
+                            className="shrink-0 text-[11px] font-bold px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {regeneratingKey === w.key ? 'Regenerating...' : 'Regenerate'}
+                          </button>
                         </li>
                       ))}
                     </ul>
