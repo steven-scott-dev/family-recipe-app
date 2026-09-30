@@ -8,6 +8,7 @@ export default function App() {
   const [shoppingList, setShoppingList] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
   const [allergyWarnings, setAllergyWarnings] = useState([]);
+  const [duplicateNotes, setDuplicateNotes] = useState([]);
   const [shoppingRange, setShoppingRange] = useState('');
 
   // Family State
@@ -247,6 +248,7 @@ export default function App() {
 
     setIsGenerating(true);
     setAllergyWarnings([]);
+    setDuplicateNotes([]);
 
     // Compile constraints from family roster
     const allDiets = Array.from(new Set(members.flatMap(m => m.dietary_preferences || [])));
@@ -265,7 +267,7 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nCRITICAL: every meal title must be unique across the entire plan - never repeat a recipe, no duplicates across days or meal types.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -380,6 +382,7 @@ Each item in the array MUST strictly follow this JSON schema:
       });
       setGeneratedMeals(normalizedPlan);
       setAllergyWarnings(scanAllergies(normalizedPlan, allAllergies));
+      setDuplicateNotes(findDuplicateTitles(normalizedPlan));
     } catch (err) {
       console.error('AI Generation Error:', err);
       alert('Failed to generate AI meal plan: ' + err.message);
@@ -600,6 +603,21 @@ Each item in the array MUST strictly follow this JSON schema:
     return hits;
   };
 
+  const findDuplicateTitles = (meals) => {
+    const seen = {};
+    const dupes = [];
+    (meals || []).forEach((m) => {
+      const key = String(m.title || '').toLowerCase().trim();
+      if (!key) return;
+      seen[key] = seen[key] || { title: m.title, count: 0 };
+      seen[key].count += 1;
+    });
+    Object.values(seen).forEach((s) => {
+      if (s.count > 1) dupes.push({ title: s.title, count: s.count });
+    });
+    return dupes;
+  };
+
   const calculateTotalCost = () => {
     return generatedMeals.reduce((acc, curr) => acc + (curr.price || 0), 0);
   };
@@ -683,6 +701,11 @@ Each item in the array MUST strictly follow this JSON schema:
                       ))}
                     </ul>
                     <p className="text-red-600 font-semibold">Review these meals or regenerate before cooking.</p>
+                  </div>
+                )}
+                {duplicateNotes.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 rounded-lg text-xs">
+                    Note: {duplicateNotes.map((d) => `${d.title} (\u00D7${d.count})`).join(', ')} appears more than once — regenerate for more variety if you'd like.
                   </div>
                 )}
                 <div className="flex justify-between items-center px-1">
