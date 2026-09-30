@@ -76,8 +76,57 @@ Return ONLY a valid JSON array matching this exact schema, without markdown form
     throw new Error(rawResult.error.message);
   }
 
-  let content = rawResult.choices[0].message.content.trim();
-  content = content.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+  const parseJsonLenient = (text) => {
+    const t = text.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+    try {
+      return JSON.parse(t);
+    } catch (e) {
+      const start = t.search(/[[{]/);
+      const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+      if (start !== -1 && end > start) {
+        return JSON.parse(t.slice(start, end + 1));
+      }
+      throw e;
+    }
+  };
 
-  return JSON.parse(content);
+  const normalizePlan = (parsed) => {
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      const arr = Object.values(parsed).find((v) => Array.isArray(v));
+      if (arr) return arr;
+    }
+    throw new Error('AI response was not a meal array');
+  };
+
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 8000,
+          response_format: { type: 'json_object' }
+        })
+      });
+
+      const rawResult = await apiResponse.json();
+      if (rawResult.error) {
+        throw new Error(rawResult.error.message);
+      }
+
+      return normalizePlan(parseJsonLenient(rawResult.choices[0].message.content));
+    } catch (err) {
+      lastErr = err;
+      console.warn(`Meal plan generation attempt ${attempt} failed:`, err.message);
+    }
+  }
+  throw lastErr || new Error('AI returned invalid data after 3 attempts');
 }
