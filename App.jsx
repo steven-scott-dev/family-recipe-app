@@ -254,7 +254,7 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
@@ -497,7 +497,7 @@ Each item in the array MUST strictly follow this JSON schema:
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                      Total: ${calculateTotalCost().toFixed(2)}
+                      Est. total: ${calculateTotalCost().toFixed(2)}
                     </span>
                     <button
                       onClick={handleSavePlan}
@@ -520,7 +520,7 @@ Each item in the array MUST strictly follow this JSON schema:
                         <p className="font-bold text-slate-800">{meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}</p>
                         <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                       </div>
-                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'}</span>
+                      <span className="font-semibold text-slate-600 ml-2">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
                     </div>
                   ))}
                 </div>
@@ -534,7 +534,7 @@ Each item in the array MUST strictly follow this JSON schema:
                         <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
                           <div>
                             <p className="font-bold text-slate-700">{plan.name}</p>
-                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ${Number(plan.total_cost || 0).toFixed(2)}</p>
+                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
                           </div>
                           <div className="flex gap-1.5">
                             <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
