@@ -251,6 +251,33 @@ export default function App() {
     const allAllergies = Array.from(new Set(members.flatMap(m => m.allergies || [])));
     const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
 
+    // Ratings feedback loop: learn from past meal ratings
+    let bannedMeals = [];
+    let favoriteMeals = [];
+    try {
+      const { data: ratedMeals, error: ratingsError } = await supabase
+        .from('meals')
+        .select('title, ratings');
+      if (!ratingsError && ratedMeals) {
+        const byTitle = {};
+        ratedMeals.forEach((m) => {
+          const vals = Object.values(m.ratings || {});
+          if (!vals.length) return;
+          const key = String(m.title || '').toLowerCase().trim();
+          if (!key) return;
+          if (!byTitle[key]) byTitle[key] = { title: m.title, sum: 0, n: 0 };
+          vals.forEach((v) => { byTitle[key].sum += v; byTitle[key].n += 1; });
+        });
+        Object.values(byTitle).forEach((t) => {
+          const avg = t.sum / t.n;
+          if (avg <= 2) bannedMeals.push(t.title);
+          else if (avg >= 4.5) favoriteMeals.push(t.title);
+        });
+      }
+    } catch (e) {
+      console.warn('Ratings feedback skipped:', e.message);
+    }
+
     const prompt = `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
 Family Profile:
@@ -263,7 +290,8 @@ Meal Schedule Request:
 - Meals per day: ${mealsPerDay}
 
 Instructions:
-Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
+Respond ONLY with a valid JSON array of meal objects.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). ${bannedMeals.length ? `\nNEVER generate any of these disliked meals (the family rated them 2 stars or fewer): ${bannedMeals.slice(0, 20).join('; ')}.` : ''}${favoriteMeals.length ? `\nThe family loves these meals (rated 4.5+ stars) - include them or take inspiration from them: ${favoriteMeals.slice(0, 10).join('; ')}.` : ''}
+Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
 Each item in the array MUST strictly follow this JSON schema:
 [
   {
