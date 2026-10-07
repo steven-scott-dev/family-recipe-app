@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import StatsDashboard from './StatsDashboard';
 
 const LEGAL_DOCS = {
   privacy: {
@@ -893,6 +894,24 @@ Requirements:
           </div>
         </div>
       )}
+      </div>
+    );
+  }
+
+  // Hidden admin stats dashboard: open the app at <origin>/#stats while signed in.
+  // (Placed after the sign-in gate above, so it requires login.)
+  if (typeof window !== 'undefined' && window.location.hash === '#stats') {
+    return (
+      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20">
+        <header className="bg-slate-900 text-white p-4 shadow-md">
+          <div className="max-w-md mx-auto">
+            <h1 className="text-xl font-bold tracking-wide">SupperLine <span className="text-emerald-400">· Stats</span></h1>
+            <p className="text-xs text-slate-400 mt-0.5">Admin analytics — plans, retention, Stripe tripwire</p>
+          </div>
+        </header>
+        <main className="max-w-md mx-auto p-4">
+          <StatsDashboard />
+        </main>
       </div>
     );
   }
