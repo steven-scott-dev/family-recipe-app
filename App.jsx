@@ -80,9 +80,21 @@ export default function App() {
 
   // Meal Generator State
   const [days, setDays] = useState(7);
-  const [mealsPerDay, setMealsPerDay] = useState(3);
+  const [selectedMeals, setSelectedMeals] = useState(['Breakfast', 'Lunch', 'Dinner']);
+  const mealsPerDay = selectedMeals.length; // derived from checked meal types
   const [generatedMeals, setGeneratedMeals] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const toggleMeal = (meal) => {
+    setSelectedMeals(prev => {
+      if (prev.includes(meal)) {
+        if (prev.length === 1) return prev; // always keep at least one meal
+        return prev.filter(m => m !== meal);
+      }
+      const order = ['Breakfast', 'Lunch', 'Dinner'];
+      return [...prev, meal].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    });
+  };
 
   // Saved Plans State
   const [savedPlans, setSavedPlans] = useState([]);
@@ -383,6 +395,7 @@ Family Profile:
 Meal Schedule Request:
 - Number of Days: ${days}
 - Meals per day: ${mealsPerDay}
+- Meal types to generate each day (generate exactly these types, one of each, no others): ${selectedMeals.join(', ')}
 
 Instructions:
 Respond ONLY with a valid JSON array of meal objects.\nCRITICAL: every meal title must be unique across the entire plan - never repeat a recipe, no duplicates across days or meal types.\nSet the servings field to exactly ${members.length || 1} for EVERY meal (this family's size). Include per-serving nutrition estimates in the nutrition object (realistic values for the ingredients and servings). Estimate the price field using realistic 2026 Knoxville, TN supermarket prices (typical US Southeast grocery costs for the listed ingredients and servings) - e.g. \'${members.length || 1} servings\'. Do not include markdown code block backticks (e.g. no \`\`\`json).
@@ -391,9 +404,9 @@ Each item in the array MUST strictly follow this JSON schema:
 [
   {
     "day": "Monday",
-    "type": "Breakfast",
+    "type": "${selectedMeals[0]}",
     "title": "Recipe Title",
-    "displayTitle": "Monday Breakfast: Recipe Title",
+    "displayTitle": "Monday ${selectedMeals[0]}: Recipe Title",
     "price": 8.50,
     "prepTime": "15 mins",
     "servings": "4 servings",
@@ -929,15 +942,20 @@ Requirements:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Meals / Day</label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="4"
-                    value={mealsPerDay} 
-                    onChange={(e) => setMealsPerDay(Number(e.target.value))}
-                    className="w-full border rounded p-2 text-sm text-center bg-slate-50 focus:outline-emerald-500" 
-                  />
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Which Meals</label>
+                  <div className="flex gap-3 border rounded p-2 bg-slate-50">
+                    {['Breakfast', 'Lunch', 'Dinner'].map(meal => (
+                      <label key={meal} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedMeals.includes(meal)}
+                          onChange={() => toggleMeal(meal)}
+                          className="w-4 h-4 accent-emerald-600"
+                        />
+                        {meal}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
 
