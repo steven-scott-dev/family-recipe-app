@@ -929,21 +929,20 @@ Requirements:
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Days to Plan</label>
-                  <input 
-                    type="number" 
-                    min="1" 
-                    max="14"
-                    value={days} 
-                    onChange={(e) => setDays(Number(e.target.value))}
-                    className="w-full border rounded p-2 text-sm text-center bg-slate-50 focus:outline-emerald-500" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Which Meals</label>
-                  <div className="flex gap-3 border rounded p-2 bg-slate-50">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Days to Plan</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="14"
+                  value={days} 
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  className="w-full border rounded p-2 text-sm text-center bg-slate-50 focus:outline-emerald-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Which Meals</label>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 border rounded p-2 bg-slate-50">
                     {['Breakfast', 'Lunch', 'Dinner'].map(meal => (
                       <label key={meal} className="flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
                         <input
@@ -957,7 +956,6 @@ Requirements:
                     ))}
                   </div>
                 </div>
-              </div>
 
               {members.length > 0 && (
                 <div className="text-[11px] bg-slate-50 p-2 rounded border border-slate-200 text-slate-600">
