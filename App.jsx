@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import StatsDashboard from './StatsDashboard';
 
@@ -81,7 +81,6 @@ export default function App() {
   const [editingMemberId, setEditingMemberId] = useState(null); // null = adding new member
 
   // Meal Generator State
-  const [days, setDays] = useState(7);
   const [selectedMeals, setSelectedMeals] = useState(['Breakfast', 'Lunch', 'Dinner']);
   const mealsPerDay = selectedMeals.length; // derived from checked meal types
   const [generatedMeals, setGeneratedMeals] = useState([]);
@@ -100,6 +99,61 @@ export default function App() {
   const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const parseISODate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const rangeISOs = (start, n) => Array.from({ length: n }, (_, i) => toISODate(addDays(start, i)));
+
+  // ---- plan date picker (weekly calendar view) ----
+  const DURATION_PRESETS = [
+    { label: '1 week', n: 7 },
+    { label: '2 weeks', n: 14 },
+    { label: '3 weeks', n: 21 },
+    { label: 'Month', n: 30 },
+  ];
+  const [planStartISO, setPlanStartISO] = useState(() => toISODate(new Date()));
+  const [selectedDateISOs, setSelectedDateISOs] = useState(() => rangeISOs(new Date(), 7));
+  const [activePreset, setActivePreset] = useState(7);
+  const [plansLoaded, setPlansLoaded] = useState(false);
+  const startInitRef = useRef(false);
+  const days = selectedDateISOs.length; // derived from the calendar picker
+
+  // Smart start: today, unless a saved plan already covers today -> start the day after it ends
+  const computeSmartStart = (plans) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let start = new Date(today);
+    for (const p of plans || []) {
+      if (!p.created_at || !p.days) continue;
+      const pStart = new Date(p.created_at); pStart.setHours(0, 0, 0, 0);
+      const pEnd = addDays(pStart, (Number(p.days) || 7) - 1);
+      if (pEnd >= today) {
+        const next = addDays(pEnd, 1);
+        if (next > start) start = next;
+      }
+    }
+    return start;
+  };
+  useEffect(() => {
+    if (!plansLoaded || startInitRef.current) return;
+    startInitRef.current = true;
+    const start = computeSmartStart(savedPlans);
+    const iso = toISODate(start);
+    setPlanStartISO(iso);
+    setSelectedDateISOs(rangeISOs(start, activePreset || 7));
+  }, [plansLoaded]);
+
+  const applyPreset = (n) => {
+    setActivePreset(n);
+    setSelectedDateISOs(rangeISOs(parseISODate(planStartISO), n));
+  };
+
+  const togglePlanDate = (iso) => {
+    setSelectedDateISOs((prev) => {
+      if (prev.includes(iso)) {
+        if (prev.length === 1) return prev; // keep at least one day
+        return prev.filter((x) => x !== iso);
+      }
+      return [...prev, iso].sort();
+    });
+    setActivePreset(null); // custom selection
+  };
 
   const toggleMeal = (meal) => {
     setSelectedMeals(prev => {
@@ -343,6 +397,7 @@ export default function App() {
       return;
     }
     setSavedPlans(data || []);
+    setPlansLoaded(true);
   }
 
   async function handleSavePlan() {
@@ -614,12 +669,10 @@ export default function App() {
     // Revolution v1: learn from ratings + respect the family calendar (once per generation, reused across budget retries)
     const tp = await buildTasteProfile();
     const cal = calendarPrompt();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
     const planDayList = [];
-    for (let i = 0; i < (Number(days) || 7); i++) {
-      const d = addDays(today, i);
-      const iso = toISODate(d);
+    for (const iso of [...selectedDateISOs].sort()) {
       if (cal.skipISOs.includes(iso)) continue; // eating out - no meals needed
+      const d = parseISODate(iso);
       planDayList.push(`${d.toLocaleDateString('en-US', { weekday: 'long' })} (${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`);
     }
     if (!planDayList.length) {
@@ -1199,15 +1252,60 @@ Requirements:
               </div>
               
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Days to Plan</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="14"
-                  value={days} 
-                  onChange={(e) => setDays(Number(e.target.value))}
-                  className="w-full border rounded p-2 text-sm text-center bg-slate-50 focus:outline-emerald-500" 
-                />
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Plan Length</label>
+                <div className="grid grid-cols-4 gap-1.5 mb-2">
+                  {DURATION_PRESETS.map((p) => (
+                    <button
+                      key={p.n}
+                      onClick={() => applyPreset(p.n)}
+                      className={`text-xs font-bold py-1.5 rounded-lg border transition ${activePreset === p.n ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-400'}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Weekly calendar view: tap days to add/remove */}
+                {(() => {
+                  const start = parseISODate(planStartISO);
+                  const totalDays = activePreset || Math.max(selectedDateISOs.length, 7);
+                  const offset = start.getDay(); // Sunday-aligned rows
+                  const weeks = Math.ceil((offset + totalDays) / 7);
+                  const gridStart = addDays(start, -offset);
+                  const todayISO = toISODate(new Date());
+                  const fmtDay = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  const rows = [];
+                  for (let w = 0; w < weeks; w++) {
+                    const cells = [];
+                    for (let d = 0; d < 7; d++) {
+                      const idx = w * 7 + d;
+                      const date = addDays(gridStart, idx);
+                      const iso = toISODate(date);
+                      const inPlan = idx >= offset && idx < offset + totalDays;
+                      if (!inPlan) { cells.push(<div key={d} />); continue; }
+                      const selected = selectedDateISOs.includes(iso);
+                      const isToday = iso === todayISO;
+                      cells.push(
+                        <button
+                          key={d}
+                          onClick={() => togglePlanDate(iso)}
+                          className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-emerald-600 text-white border-emerald-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-emerald-400' : ''}`}
+                        >
+                          <span className={`text-[9px] ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{'SMTWTFS'[date.getDay()]}</span>
+                          <span>{date.getDate()}</span>
+                        </button>
+                      );
+                    }
+                    rows.push(<div key={w} className="grid grid-cols-7 gap-1">{cells}</div>);
+                  }
+                  const sorted = [...selectedDateISOs].sort();
+                  const rangeLabel = sorted.length ? `${fmtDay(parseISODate(sorted[0]))} – ${fmtDay(parseISODate(sorted[sorted.length - 1]))}` : '';
+                  return (
+                    <div className="space-y-1">
+                      {rows}
+                      <p className="text-[11px] text-slate-500 pt-1">{sorted.length} day{sorted.length === 1 ? '' : 's'} · {rangeLabel}{activePreset ? '' : ' · custom'}</p>
+                    </div>
+                  );
+                })()}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Which Meals</label>
