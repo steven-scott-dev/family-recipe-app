@@ -95,6 +95,24 @@ export default function App() {
   const [calEvents, setCalEvents] = useState([]); // { id, dateISO, weekday, title, kind: 'dinner-out'|'guests'|'busy', enabled }
   const [calError, setCalError] = useState('');
 
+  // ---- Quick wins (2026-10-09): fridge input, modular/use-it-up nights, pantry, tonight card ----
+  const [fridgeNotes, setFridgeNotes] = useState('');
+  const [modularNights, setModularNights] = useState(null); // null = auto (on when a young child is present)
+  const [useUpNight, setUseUpNight] = useState(true);
+  const [pantryOwned, setPantryOwned] = useState([]); // normalized ingredient names the family already owns
+  const [loadedPlanDates, setLoadedPlanDates] = useState(null); // ISO dates the current plan covers
+  const famKey = (k) => `supperline:${k}:${family?.id || 'nofamily'}`;
+  const persistLocal = (k, v) => { try { localStorage.setItem(famKey(k), v); } catch (e) {} };
+  const youngChild = members.some((m) => m.role === 'child' && m.age && Number(m.age) < 12);
+  const modularOn = modularNights === null ? youngChild : modularNights;
+  useEffect(() => {
+    try {
+      setFridgeNotes(localStorage.getItem(famKey('fridge')) || '');
+      setPantryOwned(JSON.parse(localStorage.getItem(famKey('pantry')) || '[]'));
+    } catch (e) { /* storage unavailable */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [family?.id]);
+
   // ---- date helpers (local-time safe) ----
   const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const parseISODate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -418,6 +436,8 @@ export default function App() {
         .select()
         .single();
       if (planError) throw planError;
+      // Quick wins: remember which calendar dates this plan covers (for the Tonight card)
+      persistLocal('plandates:' + plan.id, JSON.stringify([...selectedDateISOs].sort()));
 
       const mealRows = generatedMeals.map(m => ({
         plan_id: plan.id,
@@ -472,6 +492,21 @@ export default function App() {
       ingredients: m.ingredients,
       instructions: m.instructions
     })));
+    // Quick wins: restore this plan's calendar dates for the Tonight card (fallback: created_at + days)
+    try {
+      const stored = localStorage.getItem(famKey('plandates:' + planId));
+      if (stored) {
+        setLoadedPlanDates(JSON.parse(stored));
+      } else {
+        const p = savedPlans.find((x) => x.id === planId);
+        if (p && p.created_at && p.days) {
+          const s = new Date(p.created_at); s.setHours(0, 0, 0, 0);
+          setLoadedPlanDates(rangeISOs(s, Number(p.days) || 7));
+        } else {
+          setLoadedPlanDates(null);
+        }
+      }
+    } catch (e) { setLoadedPlanDates(null); }
     setActiveTab('meal_planning');
     logEvent('plan_loaded', { plan_id: planId, meals: (data || []).length });
   }
@@ -684,6 +719,20 @@ export default function App() {
     const tasteSection = tasteProfilePrompt(tp);
     const calSection = cal.text;
 
+    // Quick wins: fridge-first, modular nights, use-it-up night (prompt sections only — budget ceiling stays supreme)
+    const plannedISOs = [...selectedDateISOs].sort().filter((iso) => !cal.skipISOs.includes(iso));
+    const fridgeSection = fridgeNotes.trim() ? `
+Ingredients already on hand (USE THESE FIRST):
+- ${fridgeNotes.trim()}
+Design meals around these before adding new purchases. Prefer recipes that consume them fully.` : '';
+    const modularCount = (modularOn && selectedMeals.includes('Dinner'))
+      ? Math.min(2, Math.max(1, Math.floor(effDays / 3))) : 0;
+    const modularSection = modularCount > 0 ? `
+MODULAR FORMAT: Make ${modularCount} of the dinners "build-your-own" style — one shared base with separate components everyone assembles themselves (taco bars, grain bowls, baked potato bars, pasta with topping choices). List each component's ingredients separately. In the instructions, describe the assembly. These must be picky-eater-proof: include at least one plain, kid-safe component. Set "modular": true on these meals.` : '';
+    const lastPlanDay = planDayList[planDayList.length - 1];
+    const useUpSection = (useUpNight && selectedMeals.includes('Dinner')) ? `
+USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a "use-it-up" dinner built ONLY from ingredients already used earlier in this plan — remaining halves of produce, leftover proteins, open sauces/grains. No new specialty purchases for this meal. Title it as a flexible clean-out meal (e.g. "Fridge Clean-Out Stir-Fry"). Price it from the leftovers (near $0 added cost). It still counts toward the $${budget} ceiling.` : '';
+
     const buildPrompt = (prevTotal) => `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
 Family Profile:
@@ -695,6 +744,9 @@ Family Profile:
 - Disliked Foods to Exclude: ${allDislikes.length ? allDislikes.join(', ') : 'None'}
 ${tasteSection ? '\n' + tasteSection + '\n' : ''}
 ${calSection ? '\n' + calSection + '\n' : ''}
+${fridgeSection ? '\n' + fridgeSection + '\n' : ''}
+${modularSection ? '\n' + modularSection + '\n' : ''}
+${useUpSection ? '\n' + useUpSection + '\n' : ''}
 Meal Schedule Request:
 - Plan days in order (${effDays} days): ${planDayList.join(', ')}
 - Generate exactly one set of meals for each listed day, in order. Use the exact weekday name from the list in the "day" field.
@@ -793,6 +845,7 @@ Each item in the array MUST strictly follow this JSON schema:
         throw lastErr || new Error('AI returned invalid data after 3 attempts');
       }
       setGeneratedMeals(bestPlan);
+      setLoadedPlanDates(plannedISOs);
       setAllergyWarnings(scanAllergies(bestPlan, allAllergies));
       setDuplicateNotes(findDuplicateTitles(bestPlan));
       logEvent('plan_generated', {
@@ -928,9 +981,55 @@ Each item in the array MUST strictly follow this JSON schema:
     setShowShopping(true);
   };
 
+  // ---- Pantry-aware shopping list: "have it" marks items owned (persisted per family) ----
+  const normPantryName = (display) => String(display || '').split('—')[0].trim().toLowerCase();
+  const fridgeTokens = () => fridgeNotes.toLowerCase().split(/[,\n]/).map((t) => t.trim()).filter((t) => t.length > 2);
+  const isOwned = (item) => {
+    const n = normPantryName(item.display);
+    if (pantryOwned.includes(n)) return true;
+    const toks = fridgeTokens();
+    return toks.some((t) => n.includes(t) || t.includes(n));
+  };
+  const togglePantry = (item) => {
+    const n = normPantryName(item.display);
+    setPantryOwned((prev) => {
+      const next = prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n];
+      persistLocal('pantry', JSON.stringify(next));
+      return next;
+    });
+  };
+  const renderShopItem = (item, owned) => (
+    <li
+      key={item.id}
+      onClick={() => setCheckedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+      className={`text-xs p-2 rounded-lg border cursor-pointer flex gap-2 items-start ${
+        checkedItems[item.id] || owned
+          ? 'bg-emerald-50 border-emerald-200 text-slate-400 line-through'
+          : 'bg-slate-50 border-slate-200 text-slate-700'
+      }`}
+    >
+      <span className="mt-0.5">{checkedItems[item.id] ? '☑' : '☐'}</span>
+      <span className="flex-1">
+        <span className="font-semibold">{item.display}</span>
+        {item.meals.length > 0 && (
+          <span className="block text-[10px] text-slate-400 font-normal">
+            {item.meals.join(', ')}
+          </span>
+        )}
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); togglePantry(item); }}
+        className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${owned ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}
+      >
+        {owned ? 'buy' : 'have it'}
+      </button>
+    </li>
+  );
+
   const copyShoppingList = () => {
     if (!shoppingList) return;
     const text = shoppingList
+      .filter((i) => !isOwned(i))
       .map((i) => `\u2022 ${i.display}`)
       .join('\n');
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1324,6 +1423,41 @@ Requirements:
                   </div>
                 </div>
 
+              {/* Quick wins: fridge input + plan style toggles */}
+              <div className="border rounded-lg p-2.5 bg-emerald-50/60 border-emerald-200 space-y-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">🧊 Already in your fridge/pantry?</label>
+                  <textarea
+                    value={fridgeNotes}
+                    onChange={(e) => { setFridgeNotes(e.target.value); persistLocal('fridge', e.target.value); }}
+                    placeholder="e.g. chicken thighs, half jar pesto, wilting spinach"
+                    rows={2}
+                    className="mt-1 w-full text-xs border border-slate-200 rounded-lg p-2 bg-white text-slate-700"
+                  />
+                  <p className="text-[11px] text-slate-500">The plan will use these up first — and skip them on the shopping list.</p>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={modularOn}
+                    onChange={() => setModularNights(!modularOn)}
+                    className="w-4 h-4 accent-emerald-600"
+                  />
+                  🍱 Build-your-own nights
+                  {youngChild && <span className="text-[10px] text-emerald-700 font-semibold">(great for picky eaters)</span>}
+                </label>
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useUpNight}
+                    onChange={() => setUseUpNight(!useUpNight)}
+                    className="w-4 h-4 accent-emerald-600"
+                  />
+                  ♻️ Use-it-up night
+                  <span className="text-[10px] text-slate-500">(last night cooks the leftovers)</span>
+                </label>
+              </div>
+
               {/* Calendar sync: life events that shape the plan */}
               <div className="border rounded-lg p-2.5 bg-indigo-50/60 border-indigo-200">
                 <div className="flex items-center justify-between mb-1">
@@ -1386,6 +1520,34 @@ Requirements:
                 {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Generate AI Meal Schedule'}
               </button>
             </div>
+
+            {/* Tonight card: kill the 5pm panic — surface today's dinner from the active plan */}
+            {(() => {
+              if (!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) return null;
+              const todayISO = toISODate(new Date());
+              if (!loadedPlanDates.includes(todayISO)) return null;
+              const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+              const todays = generatedMeals.filter((m) => m.day === weekday);
+              const pick = todays.find((m) => m.type === 'Dinner') || todays[0];
+              if (!pick) return null;
+              return (
+                <div className="bg-emerald-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Tonight · {pick.type}</p>
+                    <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
+                    <p className="text-xs text-emerald-100 mt-0.5">
+                      {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedRecipe(pick)}
+                    className="shrink-0 bg-white text-emerald-700 text-xs font-bold px-3 py-2 rounded-lg"
+                  >
+                    View recipe
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Generated Recipes List */}
             {generatedMeals.length > 0 && (
@@ -1481,6 +1643,7 @@ Requirements:
                       <div>
                         <p className="font-bold text-slate-800">
                           {flagged && <span className="text-red-500 mr-1">⚠️</span>}
+                          {meal.modular && <span className="mr-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">🍱 build-your-own</span>}
                           {meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}
                         </p>
                         <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
@@ -1799,32 +1962,30 @@ Requirements:
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  {shoppingList.length} items · tap to check off
-                </p>
+                {(() => {
+                  const toBuy = shoppingList.filter((i) => !isOwned(i));
+                  const owned = shoppingList.filter(isOwned);
+                  return (
+                    <React.Fragment>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        {toBuy.length} to buy · tap to check off
+                      </p>
                 <ul className="space-y-1.5">
-                  {shoppingList.map((item) => (
-                    <li
-                      key={item.id}
-                      onClick={() => setCheckedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
-                      className={`text-xs p-2 rounded-lg border cursor-pointer flex gap-2 items-start ${
-                        checkedItems[item.id]
-                          ? 'bg-emerald-50 border-emerald-200 text-slate-400 line-through'
-                          : 'bg-slate-50 border-slate-200 text-slate-700'
-                      }`}
-                    >
-                      <span className="mt-0.5">{checkedItems[item.id] ? '\u2611' : '\u2610'}</span>
-                      <span>
-                        <span className="font-semibold">{item.display}</span>
-                        {item.meals.length > 0 && (
-                          <span className="block text-[10px] text-slate-400 font-normal">
-                            {item.meals.join(', ')}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+                  {toBuy.map((item) => renderShopItem(item, false))}
                 </ul>
+                {owned.length > 0 && (
+                  <React.Fragment>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider pt-1">
+                      Already owned · {owned.length} (skipped on copy)
+                    </p>
+                    <ul className="space-y-1.5">
+                      {owned.map((item) => renderShopItem(item, true))}
+                    </ul>
+                  </React.Fragment>
+                )}
+                    </React.Fragment>
+                  );
+                })()}
                 <button
                   onClick={copyShoppingList}
                   className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
