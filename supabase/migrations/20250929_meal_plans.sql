@@ -23,10 +23,18 @@ create table if not exists meals (
   price numeric,
   prep_time text,
   servings text,
+  nutrition jsonb,
+  ratings jsonb not null default '{}'::jsonb,
   ingredients jsonb not null default '[]'::jsonb,
   instructions jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
+
+-- Backfill for tables created before nutrition/ratings existed
+-- (CREATE TABLE IF NOT EXISTS skips existing tables, so these are needed
+-- when the meals table already exists from an earlier run)
+alter table meals add column if not exists nutrition jsonb;
+alter table meals add column if not exists ratings jsonb not null default '{}'::jsonb;
 
 create index if not exists meals_plan_id_idx on meals (plan_id);
 create index if not exists meal_plans_family_id_idx on meal_plans (family_id);
