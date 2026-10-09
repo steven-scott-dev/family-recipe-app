@@ -109,9 +109,39 @@ export default function App() {
     try {
       setFridgeNotes(localStorage.getItem(famKey('fridge')) || '');
       setPantryOwned(JSON.parse(localStorage.getItem(famKey('pantry')) || '[]'));
+      // Restore the working plan draft so generated recipes survive app restarts
+      const draft = localStorage.getItem(famKey('draft'));
+      if (draft) {
+        setGeneratedMeals(JSON.parse(draft));
+        const dd = localStorage.getItem(famKey('draftDates'));
+        setLoadedPlanDates(dd ? JSON.parse(dd) : null);
+      }
     } catch (e) { /* storage unavailable */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family?.id]);
+  // Persist the working plan on every change — it lives until discarded or replaced
+  useEffect(() => {
+    if (!family?.id) return;
+    try {
+      if (generatedMeals.length) {
+        persistLocal('draft', JSON.stringify(generatedMeals));
+        persistLocal('draftDates', JSON.stringify(loadedPlanDates || []));
+      }
+    } catch (e) { /* quota/private mode — plan just won't persist */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedMeals, loadedPlanDates]);
+  const discardDraft = () => {
+    if (!generatedMeals.length) return;
+    if (!confirm('Discard this plan? Saved plans are not affected.')) return;
+    setGeneratedMeals([]);
+    setLoadedPlanDates(null);
+    setAllergyWarnings([]);
+    setDuplicateNotes([]);
+    try {
+      localStorage.removeItem(famKey('draft'));
+      localStorage.removeItem(famKey('draftDates'));
+    } catch (e) {}
+  };
 
   // ---- date helpers (local-time safe) ----
   const toISODate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1611,6 +1641,12 @@ Requirements:
                     >
                       {isSaving ? 'Saving...' : '💾 Save Plan'}
                     </button>
+                    <button
+                      onClick={discardDraft}
+                      className="text-xs font-bold px-3 py-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300"
+                    >
+                      🗑 Discard
+                    </button>
                   </div>
                 </div>
                 {(() => {
@@ -1657,28 +1693,28 @@ Requirements:
                   })}
                 </div>
 
-                {/* Saved Plans */}
-                {savedPlans.length > 0 && (
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
-                    <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Saved Plans</h4>
-                    <div className="space-y-1.5">
-                      {savedPlans.map(plan => (
-                        <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
-                          <div>
-                            <p className="font-bold text-slate-700">{plan.name}</p>
-                            <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
-                          </div>
-                          <div className="flex gap-1.5">
-                            <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
-                            <button onClick={() => handleDeletePlan(plan.id)} className="font-bold text-red-600 hover:underline">Delete</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                               </div>
+            )}
+
+            {/* Saved Plans — always visible */}
+            {savedPlans.length > 0 && (
+              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Saved Plans</h4>
+                <div className="space-y-1.5">
+                  {savedPlans.map(plan => (
+                    <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
+                      <div>
+                        <p className="font-bold text-slate-700">{plan.name}</p>
+                        <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
+                        <button onClick={() => handleDeletePlan(plan.id)} className="font-bold text-red-600 hover:underline">Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
