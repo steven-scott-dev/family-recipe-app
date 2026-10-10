@@ -75,6 +75,7 @@ export default function App() {
   const [isManaged, setIsManaged] = useState(true);
   const [memberAge, setMemberAge] = useState('');
   const [memberRole, setMemberRole] = useState('parent');
+  const [memberPortion, setMemberPortion] = useState('standard'); // small | standard | large
   const [selectedDiet, setSelectedDiet] = useState([]);
   const [selectedAllergies, setSelectedAllergies] = useState([]);
   const [dislikesText, setDislikesText] = useState('');
@@ -345,7 +346,8 @@ export default function App() {
       allergies: selectedAllergies,
       dislikes: dislikesText.split(',').map(s => s.trim()).filter(Boolean),
       age: memberAge ? Number(memberAge) : null,
-      role: memberRole
+      role: memberRole,
+      portion_size: memberPortion
     };
 
     if (editingMemberId) {
@@ -396,6 +398,7 @@ export default function App() {
     setDislikesText('');
     setMemberAge('');
     setMemberRole('parent');
+    setMemberPortion('standard');
     setEditingMemberId(null);
   }
 
@@ -409,6 +412,7 @@ export default function App() {
     setDislikesText((member.dislikes || []).join(', '));
     setMemberAge(member.age ? String(member.age) : '');
     setMemberRole(member.role || 'parent');
+    setMemberPortion(member.portion_size || 'standard');
     setEditingMemberId(member.id);
     setActiveTab('setup');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -727,9 +731,11 @@ export default function App() {
       const bits = [m.name || 'Member'];
       if (m.role) bits.push(m.role);
       if (m.age) bits.push(`age ${m.age}`);
+      if (m.portion_size && m.portion_size !== 'standard') bits.push(`${m.portion_size} portions`);
       return bits.join(', ');
     }).join('; ') || 'not specified';
     const hasYoungChild = members.some((m) => m.role === 'child' && m.age && Number(m.age) < 12);
+    const hasSmallPortion = members.some((m) => m.portion_size === 'small');
 
     // Revolution v1: learn from ratings + respect the family calendar (once per generation, reused across budget retries)
     const tp = await buildTasteProfile();
@@ -767,7 +773,7 @@ USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a "use-it-up" di
 
 Family Profile:
 - Total Family Members: ${familySize}
-- Members: ${memberDesc}${hasYoungChild ? ' - NOTE: a young child is in the family - use kid-appropriate portion sizes and kid-friendly flavors for their share.' : ''}
+- Members: ${memberDesc}${hasYoungChild ? ' - NOTE: a young child is in the family - use kid-appropriate portion sizes and kid-friendly flavors for their share.' : ''}${hasSmallPortion ? ' - NOTE: a family member needs SMALL portions (e.g. post-surgery stomach) - scale their share of each meal down significantly, do not serve them a full adult portion.' : ''}
 - HARD WEEKLY BUDGET CEILING: $${budget}. The SUM of the price field across ALL meals in the entire plan MUST be less than or equal to $${budget}. This is non-negotiable - treat it as the single most important constraint, above variety.
 - Required Diets:${allDiets.length ? allDiets.join(', ') : 'None'}
 - CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}
@@ -1799,6 +1805,23 @@ Requirements:
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Portion Size</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['small', 'standard', 'large'].map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setMemberPortion(p)}
+                      className={`py-2 text-xs rounded font-bold border capitalize ${memberPortion === p ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Pick Small for post-surgery or light eaters — the AI scales their share down.</p>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Member Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button 
@@ -1909,6 +1932,7 @@ Requirements:
                         {member.name}
                         {member.age ? <span className="font-normal text-slate-500"> · {member.age}y</span> : null}
                         {member.role ? <span className="font-normal text-slate-500"> · {member.role}</span> : null}
+                        {member.portion_size && member.portion_size !== 'standard' ? <span className="font-normal text-slate-500"> · {member.portion_size} portions</span> : null}
                       </h3>
                       <span className={`text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded ${member.is_managed ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                         {member.is_managed ? 'Managed' : 'Account Member'}
