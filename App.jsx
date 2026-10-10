@@ -1313,6 +1313,8 @@ Requirements:
             <button className="underline" onClick={() => setLegalView('terms')}>Terms of Service</button>
             {' \u00b7 '}
             <a className="underline" href="mailto:supperlineapp@gmail.com">Contact Us</a>
+            {' \u00b7 '}
+            <a className="underline" href="https://m.me/1403473456182680" target="_blank" rel="noreferrer">Messenger</a>
           </p>
         </div>
       {legalView && (
@@ -2174,6 +2176,8 @@ Requirements:
         <button className="underline" onClick={() => setLegalView('terms')}>Terms of Service</button>
         {' \u00b7 '}
         <a className="underline" href="mailto:supperlineapp@gmail.com">Contact Us</a>
+        {' \u00b7 '}
+        <a className="underline" href="https://m.me/1403473456182680" target="_blank" rel="noreferrer">Messenger</a>
       </p>
 
       {/* Legal modal */}
