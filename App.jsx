@@ -52,6 +52,11 @@ const LEGAL_DOCS = {
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [dishPhotos, setDishPhotos] = useState([]); // snap-your-dish photos for the open recipe
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const photoInputRef = useRef(null);
+  const dishKey = (title) => String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState('');
@@ -1126,6 +1131,57 @@ Each item in the array MUST strictly follow this JSON schema:
     if (meal.mealId) {
       const { error } = await supabase.from('meals').update({ ratings }).eq('id', meal.mealId);
       if (error) console.error('Rating save error:', error);
+    }
+  };
+
+  // ---- Snap-your-dish: load photos for the open recipe's dish ----
+  useEffect(() => {
+    if (!selectedRecipe || !family?.id) { setDishPhotos([]); setActivePhotoIdx(0); return; }
+    const key = dishKey(selectedRecipe.title);
+    supabase
+      .from('meal_photos')
+      .select('*')
+      .eq('family_id', family.id)
+      .eq('dish_key', key)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error) { setDishPhotos(data || []); setActivePhotoIdx(0); }
+      });
+  }, [selectedRecipe && dishKey(selectedRecipe.title), family?.id]);
+
+  const handlePhotoFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !selectedRecipe || !family?.id) return;
+    setUploadingPhoto(true);
+    try {
+      // Compress client-side: max 1200px, JPEG 0.8
+      const img = await createImageBitmap(file);
+      const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.8));
+      if (!blob) throw new Error('compress failed');
+      const key = dishKey(selectedRecipe.title);
+      const path = `${family.id}/${key}/${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage.from('dish-photos').upload(path, blob, { contentType: 'image/jpeg' });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('dish-photos').getPublicUrl(path);
+      const { data, error: insErr } = await supabase
+        .from('meal_photos')
+        .insert({ family_id: family.id, dish_key: key, title: selectedRecipe.title, photo_url: urlData.publicUrl })
+        .select()
+        .single();
+      if (insErr) throw insErr;
+      setDishPhotos((prev) => [data, ...prev]);
+      setActivePhotoIdx(0);
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      alert('Photo upload failed — try again.');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
     }
   };
 
@@ -2218,6 +2274,51 @@ Requirements:
               >
                 ✕
               </button>
+            </div>
+
+            {/* Snap-your-dish photo */}
+            <div>
+              {dishPhotos.length > 0 ? (
+                <>
+                  <img
+                    src={dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url}
+                    alt={selectedRecipe.title}
+                    className="w-full h-44 object-cover rounded-lg border border-slate-200"
+                  />
+                  {dishPhotos.length > 1 && (
+                    <div className="flex gap-1.5 mt-1.5 overflow-x-auto">
+                      {dishPhotos.map((p, i) => (
+                        <button key={p.id} onClick={() => setActivePhotoIdx(i)} className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 ${i === activePhotoIdx ? 'border-emerald-500' : 'border-transparent'}`}>
+                          <img src={p.photo_url} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => photoInputRef.current && photoInputRef.current.click()}
+                    disabled={uploadingPhoto}
+                    className="mt-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 disabled:opacity-50"
+                  >
+                    {uploadingPhoto ? 'Uploading...' : '+ Add another photo'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => photoInputRef.current && photoInputRef.current.click()}
+                  disabled={uploadingPhoto}
+                  className="w-full h-28 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-sm font-semibold hover:border-emerald-400 hover:text-emerald-700 disabled:opacity-50"
+                >
+                  {uploadingPhoto ? 'Uploading...' : 'Snap your dish'}
+                </button>
+              )}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoFile}
+              />
             </div>
 
             {selectedRecipe.nutrition && (
