@@ -768,6 +768,8 @@ MODULAR FORMAT: Make ${modularCount} of the dinners "build-your-own" style — o
     const lastPlanDay = planDayList[planDayList.length - 1];
     const useUpSection = (useUpNight && selectedMeals.includes('Dinner')) ? `
 USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a flexible clean-out dinner built ONLY from ingredients already on this week's shopping list — bulk buys and partial-use items from earlier meals (the rest of the potato bag, remaining half cabbage, open sauces/grains, the second onion). No new specialty purchases for this meal. Title it as a flexible clean-out meal (e.g. "Fridge Clean-Out Stir-Fry"). Price it from the groceries already bought (near $0 added cost). IMPORTANT: design it around the grocery bag, not cooked leftovers — it must work even if earlier meals were skipped. It still counts toward the $${budget} ceiling.` : '';
+    const packageSection = `
+PACKAGE-AWARE PLANNING: Groceries are sold in packages, not single units — a bag of potatoes, a bunch of celery, a head of garlic, a loaf of bread. When you introduce a packaged ingredient, prefer reusing it in 2-3 meals across the week so the whole package gets used up. Prefer ingredients already in the plan over introducing new ones: fewer distinct ingredients means a smaller shopping list, less waste, and lower cost. This is a preference, not a rule — never sacrifice meal variety or family appeal to force reuse.`;
 
     const buildPrompt = (prevTotal) => `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
@@ -783,6 +785,7 @@ ${calSection ? '\n' + calSection + '\n' : ''}
 ${fridgeSection ? '\n' + fridgeSection + '\n' : ''}
 ${modularSection ? '\n' + modularSection + '\n' : ''}
 ${useUpSection ? '\n' + useUpSection + '\n' : ''}
+${packageSection ? '\n' + packageSection + '\n' : ''}
 Meal Schedule Request:
 - Plan days in order (${effDays} days): ${planDayList.join(', ')}
 - Generate exactly one set of meals for each listed day, in order. Use the exact weekday name from the list in the "day" field.
