@@ -245,6 +245,18 @@ export default function App() {
     setGeneratorOpen(true);
   };
 
+  // Shortcut buttons above the month calendar
+  const applyShortcut = (kind) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let start, n;
+    if (kind === 'thisweek') { start = addDays(today, -today.getDay()); n = 7; }
+    else if (kind === 'nextweek') { start = addDays(today, 7 - today.getDay()); n = 7; }
+    else if (kind === '3weeks') { start = today; n = 21; }
+    else { start = today; n = 30; } // month
+    setSelectedDateISOs(rangeISOs(start, n));
+    setCalMonth({ y: start.getFullYear(), m: start.getMonth() });
+  };
+
   // Archive the working plan into history when a *different* week takes over,
   // so Home keeps showing every planned day. Regenerating the same dates
   // just replaces (no duplicate archive).
@@ -1753,6 +1765,22 @@ Requirements:
               
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Plan Dates</label>
+                <div className="grid grid-cols-4 gap-1.5 mb-2">
+                  {[
+                    { label: 'This week', kind: 'thisweek' },
+                    { label: 'Next week', kind: 'nextweek' },
+                    { label: '3 weeks', kind: '3weeks' },
+                    { label: 'Month', kind: 'month' },
+                  ].map((b) => (
+                    <button
+                      key={b.kind}
+                      onClick={() => applyShortcut(b.kind)}
+                      className="text-xs font-bold py-1.5 rounded-lg border bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-400 transition"
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
                 {/* Simple month calendar: tap days to add/remove them from the plan */}
                 {(() => {
                   const todayISO = toISODate(new Date());
