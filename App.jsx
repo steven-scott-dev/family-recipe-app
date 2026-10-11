@@ -1589,13 +1589,13 @@ Requirements:
                     onClick={openShopping}
                     className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
-                    🛒 Shopping list
+                    🛒 Make my list
                   </button>
                   <button
                     onClick={() => { setActiveTab('meal_planning'); startNewWeek(); }}
                     className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
-                    ＋ New week
+                    ＋ Plan next week
                   </button>
                 </div>
               </>
@@ -1612,13 +1612,13 @@ Requirements:
                     onClick={startNewWeek}
                     className="bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
                   >
-                    ＋ New week
+                    ＋ Plan next week
                   </button>
                   <button
                     onClick={() => setGeneratorOpen(true)}
                     className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
-                    ✏️ Edit this week
+                    ✏️ Change this week
                   </button>
                 </div>
               ) : (
@@ -1626,14 +1626,14 @@ Requirements:
                   onClick={startNewWeek}
                   className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
                 >
-                  ＋ New week — generate a plan
+                  ＋ Plan a new week
                 </button>
               )
             )}
             {generatorOpen && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
               <div className="flex justify-between items-center border-b pb-2">
-                <h2 className="text-base font-bold text-slate-800">Generate Meal Plan</h2>
+                <h2 className="text-base font-bold text-slate-800">Plan my week</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded">
                     ✨ AI Powered
@@ -1815,7 +1815,7 @@ Requirements:
                 disabled={isGenerating}
                 className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
               >
-                {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Generate AI Meal Schedule'}
+                {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Make my meal plan'}
               </button>
             </div>
             )}
