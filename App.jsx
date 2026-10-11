@@ -767,7 +767,7 @@ Design meals around these before adding new purchases. Prefer recipes that consu
 MODULAR FORMAT: Make ${modularCount} of the dinners "build-your-own" style — one shared base with separate components everyone assembles themselves (taco bars, grain bowls, baked potato bars, pasta with topping choices). List each component's ingredients separately. In the instructions, describe the assembly. These must be picky-eater-proof: include at least one plain, kid-safe component. Set "modular": true on these meals.` : '';
     const lastPlanDay = planDayList[planDayList.length - 1];
     const useUpSection = (useUpNight && selectedMeals.includes('Dinner')) ? `
-USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a "use-it-up" dinner built ONLY from ingredients already used earlier in this plan — remaining halves of produce, leftover proteins, open sauces/grains. No new specialty purchases for this meal. Title it as a flexible clean-out meal (e.g. "Fridge Clean-Out Stir-Fry"). Price it from the leftovers (near $0 added cost). It still counts toward the $${budget} ceiling.` : '';
+USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a flexible clean-out dinner built ONLY from ingredients already on this week's shopping list — bulk buys and partial-use items from earlier meals (the rest of the potato bag, remaining half cabbage, open sauces/grains, the second onion). No new specialty purchases for this meal. Title it as a flexible clean-out meal (e.g. "Fridge Clean-Out Stir-Fry"). Price it from the groceries already bought (near $0 added cost). IMPORTANT: design it around the grocery bag, not cooked leftovers — it must work even if earlier meals were skipped. It still counts toward the $${budget} ceiling.` : '';
 
     const buildPrompt = (prevTotal) => `You are a professional nutritionist and meal planning assistant. Generate a structured JSON meal plan for a family.
 
@@ -1019,7 +1019,7 @@ Each item in the array MUST strictly follow this JSON schema:
         return {
           id: i,
           display: g.hasQty
-            ? `${cap(g.name)} \u2014 ${fmtQty(q)}${g.unit ? ' ' + pluralUnit(g.unit, q) : ''}`
+            ? `${cap(g.name)} — ${fmtQty(q)}${g.unit ? ' ' + pluralUnit(g.unit, q) : ''}`
             : cap(g.name),
           meals: g.meals,
         };
