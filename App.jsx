@@ -1113,7 +1113,9 @@ Each item in the array MUST strictly follow this JSON schema:
   const setMealRating = async (memberId, stars) => {
     const meal = selectedRecipe;
     if (!meal) return;
-    const ratings = { ...(meal.ratings || {}), [memberId]: stars };
+    const ratings = { ...(meal.ratings || {}) };
+    if (stars === (ratings[memberId] || 0)) delete ratings[memberId]; // tap again to clear
+    else ratings[memberId] = stars;
     const updated = { ...meal, ratings };
     setSelectedRecipe(updated);
     setGeneratedMeals((prev) =>
@@ -2218,33 +2220,6 @@ Requirements:
               </button>
             </div>
 
-            {members.length > 0 && (
-              <div>
-                <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Rate this meal</h4>
-                <div className="space-y-1.5">
-                  {members.map((member) => {
-                    const r = (selectedRecipe.ratings || {})[member.id] || 0;
-                    return (
-                      <div key={member.id} className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                        <span className="text-xs font-semibold text-slate-700 truncate mr-2">{member.name}</span>
-                        <span className="flex gap-0.5 shrink-0">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => setMealRating(member.id, s)}
-                              className={`text-lg leading-none ${s <= r ? 'text-amber-400' : 'text-slate-300 hover:text-amber-200'}`}
-                            >
-                              ★
-                            </button>
-                          ))}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {selectedRecipe.nutrition && (
               <div>
                 <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Nutrition <span className="font-normal normal-case">(per serving, est.)</span></h4>
@@ -2279,6 +2254,33 @@ Requirements:
                 ))}
               </ul>
             </div>
+
+            {members.length > 0 && (
+              <div>
+                <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Rate this meal <span className="font-normal normal-case">(tap a star again to clear)</span></h4>
+                <div className="space-y-1.5">
+                  {members.map((member) => {
+                    const r = (selectedRecipe.ratings || {})[member.id] || 0;
+                    return (
+                      <div key={member.id} className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                        <span className="text-xs font-semibold text-slate-700 truncate mr-2">{member.name}</span>
+                        <span className="flex gap-0.5 shrink-0">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => setMealRating(member.id, s)}
+                              className={`text-lg leading-none ${s <= r ? 'text-amber-400' : 'text-slate-300 hover:text-amber-200'}`}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div>
               <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Step-By-Step Instructions</h4>
