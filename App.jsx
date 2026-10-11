@@ -51,6 +51,42 @@ const LEGAL_DOCS = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
+  // Android back-button: keep navigation in-app (tabs + modals) instead of exiting.
+  const activeTabRef = useRef('home');
+  const selectedRecipeRef = useRef(null);
+  const showShoppingRef = useRef(false);
+  const legalViewRef = useRef(null);
+  const navigate = (tab) => {
+    activeTabRef.current = tab;
+    setActiveTab(tab);
+    try { history.pushState({ slTab: tab }, ''); } catch (e) {}
+  };
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { selectedRecipeRef.current = selectedRecipe; }, [selectedRecipe]);
+  useEffect(() => { showShoppingRef.current = showShopping; }, [showShopping]);
+  useEffect(() => { legalViewRef.current = legalView; }, [legalView]);
+  useEffect(() => {
+    try { history.replaceState({ slTab: 'home' }, ''); } catch (e) {}
+    const onPop = (e) => {
+      const st = (e && e.state) || {};
+      const modalOpen = selectedRecipeRef.current || showShoppingRef.current || legalViewRef.current;
+      if (modalOpen) {
+        // Back with a modal open: close it, stay in the app
+        setSelectedRecipe(null);
+        setShowShopping(false);
+        setLegalView(null);
+        try { history.pushState({ slTab: activeTabRef.current }, ''); } catch (err) {}
+        return;
+      }
+      if (st.slTab && st.slTab !== activeTabRef.current) {
+        activeTabRef.current = st.slTab;
+        setActiveTab(st.slTab);
+      }
+      // else: at home with nothing open and no history entry left -> allow exit
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [dishPhotos, setDishPhotos] = useState([]); // snap-your-dish photos for the open recipe
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -109,6 +145,7 @@ export default function App() {
   const [useUpNight, setUseUpNight] = useState(true);
   const [pantryOwned, setPantryOwned] = useState([]); // normalized ingredient names the family already owns
   const [loadedPlanDates, setLoadedPlanDates] = useState(null); // ISO dates the current plan covers
+  const [planHistory, setPlanHistory] = useState([]); // archived past weeks: [{meals, dates, archivedAt}]
   const famKey = (k) => `supperline:${k}:${family?.id || 'nofamily'}`;
   const persistLocal = (k, v) => { try { localStorage.setItem(famKey(k), v); } catch (e) {} };
   const youngChild = members.some((m) => m.role === 'child' && m.age && Number(m.age) < 12);
@@ -124,9 +161,17 @@ export default function App() {
         const dd = localStorage.getItem(famKey('draftDates'));
         setLoadedPlanDates(dd ? JSON.parse(dd) : null);
       }
+      // Restore archived past weeks (prune older than 60 days)
+      try {
+        const hist = JSON.parse(localStorage.getItem(famKey('history')) || '[]');
+        const cutoff = Date.now() - 60 * 864e5;
+        setPlanHistory(Array.isArray(hist) ? hist.filter((p) => p && p.archivedAt > cutoff && Array.isArray(p.dates)) : []);
+      } catch (e2) { /* no history */ }
     } catch (e) { /* storage unavailable */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family?.id]);
+  // Restore calendar connection once on app start
+  useEffect(() => { restoreCalConnection(); }, []);
   // Persist the working plan on every change — it lives until discarded or replaced
   useEffect(() => {
     if (!family?.id) return;
@@ -210,6 +255,21 @@ export default function App() {
     setPlanStartISO(toISODate(base));
     setSelectedDateISOs(rangeISOs(base, n));
     setGeneratorOpen(true);
+  };
+
+  // Archive the working plan into history when a *different* week takes over,
+  // so Home keeps showing every planned day. Regenerating the same dates
+  // just replaces (no duplicate archive).
+  const archiveWorkingPlan = (newDates) => {
+    if (!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) return;
+    if (loadedPlanDates.some((d) => newDates.includes(d))) return; // same week — replace, don't archive
+    const entry = { meals: generatedMeals, dates: loadedPlanDates, archivedAt: Date.now() };
+    setPlanHistory((prev) => {
+      const cutoff = Date.now() - 60 * 864e5;
+      const next = [...prev.filter((p) => p.archivedAt > cutoff && !p.dates.some((d) => newDates.includes(d))), entry];
+      persistLocal('history', JSON.stringify(next));
+      return next;
+    });
   };
 
   const togglePlanDate = (iso) => {
@@ -433,7 +493,7 @@ export default function App() {
     setMemberRole(member.role || 'parent');
     setMemberPortion(member.portion_size || 'standard');
     setEditingMemberId(member.id);
-    setActiveTab('setup');
+    navigate('setup');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -546,21 +606,22 @@ export default function App() {
       instructions: m.instructions
     })));
     // Quick wins: restore this plan's calendar dates for the Tonight card (fallback: created_at + days)
+    let newDates = null;
     try {
       const stored = localStorage.getItem(famKey('plandates:' + planId));
       if (stored) {
-        setLoadedPlanDates(JSON.parse(stored));
+        newDates = JSON.parse(stored);
       } else {
         const p = savedPlans.find((x) => x.id === planId);
         if (p && p.created_at && p.days) {
           const s = new Date(p.created_at); s.setHours(0, 0, 0, 0);
-          setLoadedPlanDates(rangeISOs(s, Number(p.days) || 7));
-        } else {
-          setLoadedPlanDates(null);
+          newDates = rangeISOs(s, Number(p.days) || 7);
         }
       }
-    } catch (e) { setLoadedPlanDates(null); }
-    setActiveTab('meal_planning');
+    } catch (e) { newDates = null; }
+    if (newDates && newDates.length) archiveWorkingPlan(newDates);
+    setLoadedPlanDates(newDates);
+    navigate('meal_planning');
     logEvent('plan_loaded', { plan_id: planId, meals: (data || []).length });
   }
 
@@ -643,6 +704,45 @@ export default function App() {
     return null;
   };
 
+  // Silent token refresh (no popup) — works while the Google session is alive
+  const silentCalRefresh = () => {
+    if (!GOOGLE_CLIENT_ID || !window.google || !window.google.accounts || !window.google.accounts.oauth2) return;
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        callback: async (resp) => {
+          if (resp.error || !resp.access_token) { setCalConnected(false); return; }
+          const token = resp.access_token;
+          try {
+            localStorage.setItem('sl_cal_token', token);
+            localStorage.setItem('sl_cal_token_exp', String(Date.now() + 3500e3));
+          } catch (e) {}
+          try { await fetchCalEvents(token); setCalConnected(true); }
+          catch (e) { setCalConnected(false); }
+        },
+      });
+      client.requestAccessToken({ prompt: '' });
+    } catch (e) { /* silent refresh unavailable — user reconnects manually */ }
+  };
+
+  // Restore a saved calendar connection on app start (connect once, stay connected)
+  const restoreCalConnection = () => {
+    if (!GOOGLE_CLIENT_ID) return;
+    let token = null, exp = 0;
+    try {
+      token = localStorage.getItem('sl_cal_token');
+      exp = Number(localStorage.getItem('sl_cal_token_exp') || 0);
+    } catch (e) {}
+    if (!token) return;
+    if (Date.now() < exp) {
+      setCalConnected(true);
+      fetchCalEvents(token).catch(() => silentCalRefresh());
+    } else {
+      silentCalRefresh();
+    }
+  };
+
   const connectCalendar = () => {
     setCalError('');
     if (!GOOGLE_CLIENT_ID) {
@@ -666,7 +766,8 @@ export default function App() {
           }
           try {
             const token = resp.access_token;
-            sessionStorage.setItem('sl_cal_token', token);
+            localStorage.setItem('sl_cal_token', token);
+            localStorage.setItem('sl_cal_token_exp', String(Date.now() + 3500e3));
             await fetchCalEvents(token);
             setCalConnected(true);
           } catch (e) {
@@ -903,6 +1004,8 @@ Each item in the array MUST strictly follow this JSON schema:
         throw lastErr || new Error('AI returned invalid data after 3 attempts');
       }
       setGeneratedMeals(bestPlan);
+      // Archive the previous week (if different dates) so Home keeps showing all planned days
+      archiveWorkingPlan(plannedISOs);
       // Fridge contents were just planned around — clear so stale items don't carry into next week's plan
       setFridgeNotes('');
       persistLocal('fridge', '');
@@ -1459,19 +1562,32 @@ Requirements:
 
   // Home hero: shows the selected day's featured meal (dinner-first). Tapping
   // another day in the week strip swaps the hero to that day.
+  // All planned days across the working plan + archived past weeks
+  const allPlanDates = () => {
+    const set = new Set(loadedPlanDates || []);
+    planHistory.forEach((p) => (p.dates || []).forEach((d) => set.add(d)));
+    return [...set].sort();
+  };
+  // Meals owning a given date (archived week wins, else the working plan)
+  const mealsForDate = (iso) => {
+    const hist = planHistory.find((p) => (p.dates || []).includes(iso));
+    if (hist) return hist.meals || [];
+    if ((loadedPlanDates || []).includes(iso)) return generatedMeals;
+    return [];
+  };
   const homeSelISO = () => {
-    if (!loadedPlanDates || !loadedPlanDates.length) return null;
-    const sorted = [...loadedPlanDates].sort();
+    const sorted = allPlanDates();
+    if (!sorted.length) return null;
     const todayISO = toISODate(new Date());
     if (homeDayISO && sorted.includes(homeDayISO)) return homeDayISO;
     return sorted.includes(todayISO) ? todayISO : sorted[0];
   };
   const renderDayHero = () => {
     const selISO = homeSelISO();
-    if (!selISO || !generatedMeals.length) return null;
+    if (!selISO) return null;
     const selDate = parseISODate(selISO);
     const weekday = selDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const dayMeals = generatedMeals.filter((m) => m.day === weekday);
+    const dayMeals = mealsForDate(selISO).filter((m) => m.day === weekday);
     const pick = dayMeals.find((m) => m.type === 'Dinner') || dayMeals[0];
     if (!pick) return null;
     const todayISO = toISODate(new Date());
@@ -1498,13 +1614,13 @@ Requirements:
 
   // Week strip for the Home dashboard: tap a day to see its meals
   const renderWeekStrip = () => {
-    if (!loadedPlanDates || !loadedPlanDates.length) return null;
+    const sorted = allPlanDates();
+    if (!sorted.length) return null;
     const todayISO = toISODate(new Date());
-    const sorted = [...loadedPlanDates].sort();
     const weekdayOf = (iso) => parseISODate(iso).toLocaleDateString('en-US', { weekday: 'long' });
     const selISO = homeSelISO();
     if (!selISO) return null;
-    const selMeals = generatedMeals.filter((m) => m.day === weekdayOf(selISO));
+    const selMeals = mealsForDate(selISO).filter((m) => m.day === weekdayOf(selISO));
     return (
       <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 space-y-2">
         <div className="grid grid-cols-7 gap-1">
@@ -1512,7 +1628,7 @@ Requirements:
             const d = parseISODate(iso);
             const isToday = iso === todayISO;
             const selected = iso === selISO;
-            const hasMeals = generatedMeals.some((m) => m.day === weekdayOf(iso));
+            const hasMeals = mealsForDate(iso).some((m) => m.day === weekdayOf(iso));
             return (
               <button
                 key={iso}
@@ -1568,13 +1684,13 @@ Requirements:
         {/* TAB 1: MEAL PLANNING */}
         {activeTab === 'home' && (
           <div className="space-y-4">
-            {(!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) ? (
+            {(allPlanDates().length === 0) ? (
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center space-y-3">
                 <p className="text-4xl">🍽️</p>
                 <h2 className="text-base font-bold text-slate-800">No active meal plan</h2>
                 <p className="text-xs text-slate-500">Generate your week and dinner plans itself — tonight's meal shows up right here.</p>
                 <button
-                  onClick={() => { setActiveTab('meal_planning'); startNewWeek(); }}
+                  onClick={() => { navigate('meal_planning'); startNewWeek(); }}
                   className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-emerald-700"
                 >
                   ✨ Plan my week
@@ -1592,7 +1708,7 @@ Requirements:
                     🛒 Make my list
                   </button>
                   <button
-                    onClick={() => { setActiveTab('meal_planning'); startNewWeek(); }}
+                    onClick={() => { navigate('meal_planning'); startNewWeek(); }}
                     className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
                     ＋ Plan next week
@@ -2480,28 +2596,28 @@ Requirements:
       {/* Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 text-xs font-bold z-40">
         <button 
-          onClick={() => setActiveTab('home')}
+          onClick={() => navigate('home')}
           className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'home' ? 'text-emerald-600' : 'text-slate-500'}`}
         >
           <span>🏠</span>
           <span>Home</span>
         </button>
         <button 
-          onClick={() => setActiveTab('meal_planning')}
+          onClick={() => navigate('meal_planning')}
           className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'meal_planning' ? 'text-emerald-600' : 'text-slate-500'}`}
         >
           <span>🥗</span>
           <span>Meals</span>
         </button>
         <button 
-          onClick={() => setActiveTab('setup')}
+          onClick={() => navigate('setup')}
           className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'setup' ? 'text-emerald-600' : 'text-slate-500'}`}
         >
           <span>⚙️</span>
           <span>Setup</span>
         </button>
         <button 
-          onClick={() => setActiveTab('family')}
+          onClick={() => navigate('family')}
           className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'family' ? 'text-emerald-600' : 'text-slate-500'}`}
         >
           <span>👨‍👩‍👧</span>
