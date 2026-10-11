@@ -950,10 +950,23 @@ Each item in the array MUST strictly follow this JSON schema:
 
   const singular = (w) => w.replace(/s$/, '');
 
+  // Normalize ingredient names so the same item merges across recipes:
+  // "black beans, drained and rinsed" and "black beans (15 oz)" both -> "black beans"
+  const normShopName = (name) => String(name || '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .split(/[,;]/)[0]
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Pluralize count-type units for display: "2 cans", not "2 can"
+  const COUNT_UNITS = ['can', 'clove', 'slice', 'piece', 'stalk', 'bunch', 'cup'];
+  const pluralUnit = (unit, qty) => (unit && qty !== 1 && COUNT_UNITS.includes(unit) ? unit + 's' : unit);
+
   const parseIngredientDetail = (item) => {
     const str = String(item).trim();
     const m = str.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)\s+(.*)$/);
-    if (!m) return { qty: null, unit: '', name: str.toLowerCase() };
+    if (!m) return { qty: null, unit: '', name: normShopName(str) };
     let val = 0;
     const parts = m[1].trim().split(/\s+/);
     for (const p of parts) {
@@ -964,7 +977,7 @@ Each item in the array MUST strictly follow this JSON schema:
         val += parseFloat(p);
       }
     }
-    const rest = m[2].trim();
+    const rest = m[2].trim().replace(/^\([^)]*\)\s*/, '');
     const words = rest.split(/\s+/);
     const first = words[0].toLowerCase().replace(/[^a-z]/g, '');
     let unit = '';
@@ -973,7 +986,7 @@ Each item in the array MUST strictly follow this JSON schema:
       unit = singular(first);
       name = words.slice(1).join(' ');
     }
-    return { qty: val, unit, name: name.toLowerCase() };
+    return { qty: val, unit, name: normShopName(name) };
   };
 
   const buildShoppingList = () => {
@@ -996,13 +1009,16 @@ Each item in the array MUST strictly follow this JSON schema:
     });
     const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
     return Object.values(groups)
-      .map((g, i) => ({
-        id: i,
-        display: g.hasQty
-          ? `${cap(g.name)} \u2014 ${fmtQty(Math.round(g.qty * 100) / 100)}${g.unit ? ' ' + g.unit : ''}`
-          : cap(g.name),
-        meals: g.meals,
-      }))
+      .map((g, i) => {
+        const q = Math.round(g.qty * 100) / 100;
+        return {
+          id: i,
+          display: g.hasQty
+            ? `${cap(g.name)} \u2014 ${fmtQty(q)}${g.unit ? ' ' + pluralUnit(g.unit, q) : ''}`
+            : cap(g.name),
+          meals: g.meals,
+        };
+      })
       .sort((a, b) => a.display.localeCompare(b.display));
   };
 
