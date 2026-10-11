@@ -1445,19 +1445,30 @@ Requirements:
     );
   }
 
-  // Tonight hero: kill the 5pm panic — surface today's dinner from the active plan
-  const renderTonightHero = () => {
-    if (!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) return null;
+  // Home hero: shows the selected day's featured meal (dinner-first). Tapping
+  // another day in the week strip swaps the hero to that day.
+  const homeSelISO = () => {
+    if (!loadedPlanDates || !loadedPlanDates.length) return null;
+    const sorted = [...loadedPlanDates].sort();
     const todayISO = toISODate(new Date());
-    if (!loadedPlanDates.includes(todayISO)) return null;
-    const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todays = generatedMeals.filter((m) => m.day === weekday);
-    const pick = todays.find((m) => m.type === 'Dinner') || todays[0];
+    if (homeDayISO && sorted.includes(homeDayISO)) return homeDayISO;
+    return sorted.includes(todayISO) ? todayISO : sorted[0];
+  };
+  const renderDayHero = () => {
+    const selISO = homeSelISO();
+    if (!selISO || !generatedMeals.length) return null;
+    const selDate = parseISODate(selISO);
+    const weekday = selDate.toLocaleDateString('en-US', { weekday: 'long' });
+    const dayMeals = generatedMeals.filter((m) => m.day === weekday);
+    const pick = dayMeals.find((m) => m.type === 'Dinner') || dayMeals[0];
     if (!pick) return null;
+    const todayISO = toISODate(new Date());
+    const tomorrowISO = toISODate(new Date(Date.now() + 864e5));
+    const label = selISO === todayISO ? 'Tonight' : selISO === tomorrowISO ? 'Tomorrow' : weekday;
     return (
       <div className="bg-emerald-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Tonight · {pick.type}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">{label} · {pick.type}</p>
           <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
           <p className="text-xs text-emerald-100 mt-0.5">
             {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
@@ -1479,7 +1490,8 @@ Requirements:
     const todayISO = toISODate(new Date());
     const sorted = [...loadedPlanDates].sort();
     const weekdayOf = (iso) => parseISODate(iso).toLocaleDateString('en-US', { weekday: 'long' });
-    const selISO = homeDayISO || (sorted.includes(todayISO) ? todayISO : sorted[0]);
+    const selISO = homeSelISO();
+    if (!selISO) return null;
     const selMeals = generatedMeals.filter((m) => m.day === weekdayOf(selISO));
     return (
       <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 space-y-2">
@@ -1558,7 +1570,7 @@ Requirements:
               </div>
             ) : (
               <>
-                {renderTonightHero()}
+                {renderDayHero()}
                 {renderWeekStrip()}
                 <div className="grid grid-cols-2 gap-2">
                   <button
