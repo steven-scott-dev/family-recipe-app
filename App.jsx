@@ -203,16 +203,9 @@ export default function App() {
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const rangeISOs = (start, n) => Array.from({ length: n }, (_, i) => toISODate(addDays(start, i)));
 
-  // ---- plan date picker (weekly calendar view) ----
-  const DURATION_PRESETS = [
-    { label: '1 week', n: 7 },
-    { label: '2 weeks', n: 14 },
-    { label: '3 weeks', n: 21 },
-    { label: 'Month', n: 30 },
-  ];
-  const [planStartISO, setPlanStartISO] = useState(() => toISODate(new Date()));
+  // ---- plan date picker (simple month calendar: tap days to include them) ----
   const [selectedDateISOs, setSelectedDateISOs] = useState(() => rangeISOs(new Date(), 7));
-  const [activePreset, setActivePreset] = useState(7);
+  const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }; });
   const [plansLoaded, setPlansLoaded] = useState(false);
   const startInitRef = useRef(false);
   const days = selectedDateISOs.length; // derived from the calendar picker
@@ -236,15 +229,9 @@ export default function App() {
     if (!plansLoaded || startInitRef.current) return;
     startInitRef.current = true;
     const start = computeSmartStart(savedPlans);
-    const iso = toISODate(start);
-    setPlanStartISO(iso);
-    setSelectedDateISOs(rangeISOs(start, activePreset || 7));
+    setSelectedDateISOs(rangeISOs(start, 7));
+    setCalMonth({ y: start.getFullYear(), m: start.getMonth() });
   }, [plansLoaded]);
-
-  const applyPreset = (n) => {
-    setActivePreset(n);
-    setSelectedDateISOs(rangeISOs(parseISODate(planStartISO), n));
-  };
 
   // Start a fresh week: roll the generator dates to the week after the current
   // plan ends (or from today if there's no plan). "Edit this week" is just
@@ -252,9 +239,9 @@ export default function App() {
   const startNewWeek = () => {
     const sorted = loadedPlanDates && loadedPlanDates.length ? [...loadedPlanDates].sort() : null;
     const base = sorted ? addDays(parseISODate(sorted[sorted.length - 1]), 1) : new Date();
-    const n = activePreset || Math.max(selectedDateISOs.length, 7);
-    setPlanStartISO(toISODate(base));
+    const n = Math.max(selectedDateISOs.length, 7);
     setSelectedDateISOs(rangeISOs(base, n));
+    setCalMonth({ y: base.getFullYear(), m: base.getMonth() });
     setGeneratorOpen(true);
   };
 
@@ -281,7 +268,6 @@ export default function App() {
       }
       return [...prev, iso].sort();
     });
-    setActivePreset(null); // custom selection
   };
 
   const toggleMeal = (meal) => {
@@ -1766,57 +1752,63 @@ Requirements:
               </div>
               
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Plan Length</label>
-                <div className="grid grid-cols-4 gap-1.5 mb-2">
-                  {DURATION_PRESETS.map((p) => (
-                    <button
-                      key={p.n}
-                      onClick={() => applyPreset(p.n)}
-                      className={`text-xs font-bold py-1.5 rounded-lg border transition ${activePreset === p.n ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-400'}`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Weekly calendar view: tap days to add/remove */}
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Plan Dates</label>
+                {/* Simple month calendar: tap days to add/remove them from the plan */}
                 {(() => {
-                  const start = parseISODate(planStartISO);
-                  const totalDays = activePreset || Math.max(selectedDateISOs.length, 7);
-                  const offset = start.getDay(); // Sunday-aligned rows
-                  const weeks = Math.ceil((offset + totalDays) / 7);
-                  const gridStart = addDays(start, -offset);
                   const todayISO = toISODate(new Date());
-                  const fmtDay = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  const rows = [];
-                  for (let w = 0; w < weeks; w++) {
-                    const cells = [];
-                    for (let d = 0; d < 7; d++) {
-                      const idx = w * 7 + d;
-                      const date = addDays(gridStart, idx);
-                      const iso = toISODate(date);
-                      const inPlan = idx >= offset && idx < offset + totalDays;
-                      if (!inPlan) { cells.push(<div key={d} />); continue; }
-                      const selected = selectedDateISOs.includes(iso);
-                      const isToday = iso === todayISO;
-                      cells.push(
-                        <button
-                          key={d}
-                          onClick={() => togglePlanDate(iso)}
-                          className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-emerald-600 text-white border-emerald-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-emerald-400' : ''}`}
-                        >
-                          <span className={`text-[9px] ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{'SMTWTFS'[date.getDay()]}</span>
-                          <span>{date.getDate()}</span>
-                        </button>
-                      );
-                    }
-                    rows.push(<div key={w} className="grid grid-cols-7 gap-1">{cells}</div>);
+                  const first = new Date(calMonth.y, calMonth.m, 1);
+                  const monthName = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                  const offset = first.getDay();
+                  const daysInMonth = new Date(calMonth.y, calMonth.m + 1, 0).getDate();
+                  const cells = [];
+                  for (let i = 0; i < offset; i++) cells.push(<div key={'pad' + i} />);
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const iso = toISODate(new Date(calMonth.y, calMonth.m, d));
+                    const selected = selectedDateISOs.includes(iso);
+                    const isToday = iso === todayISO;
+                    cells.push(
+                      <button
+                        key={d}
+                        onClick={() => togglePlanDate(iso)}
+                        className={`py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-emerald-600 text-white border-emerald-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-emerald-400' : ''}`}
+                      >
+                        {d}
+                      </button>
+                    );
                   }
                   const sorted = [...selectedDateISOs].sort();
+                  const fmtDay = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                   const rangeLabel = sorted.length ? `${fmtDay(parseISODate(sorted[0]))} – ${fmtDay(parseISODate(sorted[sorted.length - 1]))}` : '';
+                  const shiftMonth = (dir) => {
+                    const nd = new Date(calMonth.y, calMonth.m + dir, 1);
+                    setCalMonth({ y: nd.getFullYear(), m: nd.getMonth() });
+                  };
+                  const now = new Date();
+                  const isThisMonth = calMonth.y === now.getFullYear() && calMonth.m === now.getMonth();
                   return (
                     <div className="space-y-1">
-                      {rows}
-                      <p className="text-[11px] text-slate-500 pt-1">{sorted.length} day{sorted.length === 1 ? '' : 's'} · {rangeLabel}{activePreset ? '' : ' · custom'}</p>
+                      <div className="flex items-center justify-between">
+                        <button onClick={() => shiftMonth(-1)} className="px-2 py-1 text-slate-500 font-bold text-base leading-none" aria-label="Previous month">‹</button>
+                        <span className="text-xs font-bold text-slate-700">{monthName}</span>
+                        <button onClick={() => shiftMonth(1)} className="px-2 py-1 text-slate-500 font-bold text-base leading-none" aria-label="Next month">›</button>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1 text-center">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((wd, i) => (
+                          <span key={i} className="text-[9px] font-bold text-slate-400">{wd}</span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">{cells}</div>
+                      <div className="flex items-center justify-between pt-1">
+                        <p className="text-[11px] text-slate-500">{sorted.length} day{sorted.length === 1 ? '' : 's'} · {rangeLabel}</p>
+                        {!isThisMonth && (
+                          <button
+                            onClick={() => setCalMonth({ y: now.getFullYear(), m: now.getMonth() })}
+                            className="text-[11px] font-bold text-emerald-600"
+                          >
+                            Today
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })()}
