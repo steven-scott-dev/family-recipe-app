@@ -200,6 +200,18 @@ export default function App() {
     setSelectedDateISOs(rangeISOs(parseISODate(planStartISO), n));
   };
 
+  // Start a fresh week: roll the generator dates to the week after the current
+  // plan ends (or from today if there's no plan). "Edit this week" is just
+  // opening the generator with the existing settings untouched.
+  const startNewWeek = () => {
+    const sorted = loadedPlanDates && loadedPlanDates.length ? [...loadedPlanDates].sort() : null;
+    const base = sorted ? addDays(parseISODate(sorted[sorted.length - 1]), 1) : new Date();
+    const n = activePreset || Math.max(selectedDateISOs.length, 7);
+    setPlanStartISO(toISODate(base));
+    setSelectedDateISOs(rangeISOs(base, n));
+    setGeneratorOpen(true);
+  };
+
   const togglePlanDate = (iso) => {
     setSelectedDateISOs((prev) => {
       if (prev.includes(iso)) {
@@ -1562,7 +1574,7 @@ Requirements:
                 <h2 className="text-base font-bold text-slate-800">No active meal plan</h2>
                 <p className="text-xs text-slate-500">Generate your week and dinner plans itself — tonight's meal shows up right here.</p>
                 <button
-                  onClick={() => { setActiveTab('meal_planning'); setGeneratorOpen(true); }}
+                  onClick={() => { setActiveTab('meal_planning'); startNewWeek(); }}
                   className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-emerald-700"
                 >
                   ✨ Plan my week
@@ -1580,7 +1592,7 @@ Requirements:
                     🛒 Shopping list
                   </button>
                   <button
-                    onClick={() => { setActiveTab('meal_planning'); setGeneratorOpen(true); }}
+                    onClick={() => { setActiveTab('meal_planning'); startNewWeek(); }}
                     className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
                     ＋ New week
@@ -1594,12 +1606,29 @@ Requirements:
         {activeTab === 'meal_planning' && (
           <div className="space-y-4">
             {!generatorOpen && (
-              <button
-                onClick={() => setGeneratorOpen(true)}
-                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
-              >
-                ＋ New week — generate a plan
-              </button>
+              generatedMeals.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={startNewWeek}
+                    className="bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
+                  >
+                    ＋ New week
+                  </button>
+                  <button
+                    onClick={() => setGeneratorOpen(true)}
+                    className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
+                  >
+                    ✏️ Edit this week
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={startNewWeek}
+                  className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
+                >
+                  ＋ New week — generate a plan
+                </button>
+              )
             )}
             {generatorOpen && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
