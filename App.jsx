@@ -62,9 +62,6 @@ export default function App() {
     try { history.pushState({ slTab: tab }, ''); } catch (e) {}
   };
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
-  useEffect(() => { selectedRecipeRef.current = selectedRecipe; }, [selectedRecipe]);
-  useEffect(() => { showShoppingRef.current = showShopping; }, [showShopping]);
-  useEffect(() => { legalViewRef.current = legalView; }, [legalView]);
   useEffect(() => {
     try { history.replaceState({ slTab: 'home' }, ''); } catch (e) {}
     const onPop = (e) => {
@@ -107,6 +104,10 @@ export default function App() {
   const [regeneratingKey, setRegeneratingKey] = useState(null);
   const [shoppingRange, setShoppingRange] = useState('');
   const [legalView, setLegalView] = useState(null);
+  // Mirror state into refs for the popstate handler (declared after the states they read)
+  useEffect(() => { selectedRecipeRef.current = selectedRecipe; }, [selectedRecipe]);
+  useEffect(() => { showShoppingRef.current = showShopping; }, [showShopping]);
+  useEffect(() => { legalViewRef.current = legalView; }, [legalView]);
 
   // Family State
   const [family, setFamily] = useState({ name: 'Our Family', weekly_budget: 150 });
