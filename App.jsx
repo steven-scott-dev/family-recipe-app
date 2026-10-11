@@ -963,6 +963,11 @@ Each item in the array MUST strictly follow this JSON schema:
   const COUNT_UNITS = ['can', 'clove', 'slice', 'piece', 'stalk', 'bunch', 'cup'];
   const pluralUnit = (unit, qty) => (unit && qty !== 1 && COUNT_UNITS.includes(unit) ? unit + 's' : unit);
 
+  // Discrete units are bought whole — round up: 2.5 cans -> buy 3 cans.
+  // Continuous units (cup, oz, lb) stay as measured.
+  const DISCRETE_UNITS = ['can', 'clove', 'slice', 'piece', 'stalk', 'bunch'];
+  const buyQty = (unit, qty) => (unit && DISCRETE_UNITS.includes(unit) ? Math.ceil(qty) : Math.round(qty * 100) / 100);
+
   const parseIngredientDetail = (item) => {
     const str = String(item).trim();
     const m = str.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+)\s+(.*)$/);
@@ -1010,7 +1015,7 @@ Each item in the array MUST strictly follow this JSON schema:
     const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
     return Object.values(groups)
       .map((g, i) => {
-        const q = Math.round(g.qty * 100) / 100;
+        const q = buyQty(g.unit, g.qty);
         return {
           id: i,
           display: g.hasQty
