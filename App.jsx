@@ -50,13 +50,15 @@ const LEGAL_DOCS = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('meal_planning');
+  const [activeTab, setActiveTab] = useState('home');
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
   const [showShopping, setShowShopping] = useState(false);
+  const [generatorOpen, setGeneratorOpen] = useState(false); // generator collapsible on Meals tab
+  const [homeDayISO, setHomeDayISO] = useState(null); // selected day in Home week strip
   const [shoppingList, setShoppingList] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
   const [allergyWarnings, setAllergyWarnings] = useState([]);
@@ -1382,6 +1384,81 @@ Requirements:
     );
   }
 
+  // Tonight hero: kill the 5pm panic — surface today's dinner from the active plan
+  const renderTonightHero = () => {
+    if (!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) return null;
+    const todayISO = toISODate(new Date());
+    if (!loadedPlanDates.includes(todayISO)) return null;
+    const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const todays = generatedMeals.filter((m) => m.day === weekday);
+    const pick = todays.find((m) => m.type === 'Dinner') || todays[0];
+    if (!pick) return null;
+    return (
+      <div className="bg-emerald-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Tonight · {pick.type}</p>
+          <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
+          <p className="text-xs text-emerald-100 mt-0.5">
+            {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <button
+          onClick={() => setSelectedRecipe(pick)}
+          className="shrink-0 bg-white text-emerald-700 text-xs font-bold px-3 py-2 rounded-lg"
+        >
+          View recipe
+        </button>
+      </div>
+    );
+  };
+
+  // Week strip for the Home dashboard: tap a day to see its meals
+  const renderWeekStrip = () => {
+    if (!loadedPlanDates || !loadedPlanDates.length) return null;
+    const todayISO = toISODate(new Date());
+    const sorted = [...loadedPlanDates].sort();
+    const weekdayOf = (iso) => parseISODate(iso).toLocaleDateString('en-US', { weekday: 'long' });
+    const selISO = homeDayISO || (sorted.includes(todayISO) ? todayISO : sorted[0]);
+    const selMeals = generatedMeals.filter((m) => m.day === weekdayOf(selISO));
+    return (
+      <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 space-y-2">
+        <div className="grid grid-cols-7 gap-1">
+          {sorted.map((iso) => {
+            const d = parseISODate(iso);
+            const isToday = iso === todayISO;
+            const selected = iso === selISO;
+            const hasMeals = generatedMeals.some((m) => m.day === weekdayOf(iso));
+            return (
+              <button
+                key={iso}
+                onClick={() => setHomeDayISO(iso)}
+                className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-emerald-600 text-white border-emerald-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-emerald-400' : ''}`}
+              >
+                <span className={`text-[9px] ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{'SMTWTFS'[d.getDay()]}</span>
+                <span>{d.getDate()}</span>
+                <span className={`w-1 h-1 rounded-full mt-0.5 ${hasMeals ? (selected ? 'bg-white' : 'bg-emerald-500') : 'bg-transparent'}`} />
+              </button>
+            );
+          })}
+        </div>
+        {selMeals.length > 0 && (
+          <div className="space-y-1 pt-1">
+            {selMeals.map((m, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedRecipe(m)}
+                className="w-full text-left text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 flex justify-between items-center gap-2"
+              >
+                <span className="font-semibold text-slate-700 truncate">{m.type}: {m.title}</span>
+                {m.price != null && <span className="shrink-0 text-slate-500">${Number(m.price).toFixed(2)}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20">
       {/* Top Header */}
@@ -1404,14 +1481,69 @@ Requirements:
       <main className="max-w-md mx-auto p-4 space-y-4">
         
         {/* TAB 1: MEAL PLANNING */}
+        {activeTab === 'home' && (
+          <div className="space-y-4">
+            {(!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) ? (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center space-y-3">
+                <p className="text-4xl">🍽️</p>
+                <h2 className="text-base font-bold text-slate-800">No active meal plan</h2>
+                <p className="text-xs text-slate-500">Generate your week and dinner plans itself — tonight's meal shows up right here.</p>
+                <button
+                  onClick={() => { setActiveTab('meal_planning'); setGeneratorOpen(true); }}
+                  className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-emerald-700"
+                >
+                  ✨ Plan my week
+                </button>
+              </div>
+            ) : (
+              <>
+                {renderTonightHero()}
+                {renderWeekStrip()}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={openShopping}
+                    className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
+                  >
+                    🛒 Shopping list
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('meal_planning'); setGeneratorOpen(true); }}
+                    className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
+                  >
+                    ＋ New week
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {activeTab === 'meal_planning' && (
           <div className="space-y-4">
+            {!generatorOpen && (
+              <button
+                onClick={() => setGeneratorOpen(true)}
+                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
+              >
+                ＋ New week — generate a plan
+              </button>
+            )}
+            {generatorOpen && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
               <div className="flex justify-between items-center border-b pb-2">
                 <h2 className="text-base font-bold text-slate-800">Generate Meal Plan</h2>
-                <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded">
-                  ✨ AI Powered
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded">
+                    ✨ AI Powered
+                  </span>
+                  <button
+                    onClick={() => setGeneratorOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 text-lg leading-none px-1"
+                    aria-label="Collapse generator"
+                  >
+                    −
+                  </button>
+                </div>
               </div>
               
               <div>
@@ -1584,34 +1716,7 @@ Requirements:
                 {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Generate AI Meal Schedule'}
               </button>
             </div>
-
-            {/* Tonight card: kill the 5pm panic — surface today's dinner from the active plan */}
-            {(() => {
-              if (!generatedMeals.length || !loadedPlanDates || !loadedPlanDates.length) return null;
-              const todayISO = toISODate(new Date());
-              if (!loadedPlanDates.includes(todayISO)) return null;
-              const weekday = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-              const todays = generatedMeals.filter((m) => m.day === weekday);
-              const pick = todays.find((m) => m.type === 'Dinner') || todays[0];
-              if (!pick) return null;
-              return (
-                <div className="bg-emerald-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">Tonight · {pick.type}</p>
-                    <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
-                    <p className="text-xs text-emerald-100 mt-0.5">
-                      {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedRecipe(pick)}
-                    className="shrink-0 bg-white text-emerald-700 text-xs font-bold px-3 py-2 rounded-lg"
-                  >
-                    View recipe
-                  </button>
-                </div>
-              );
-            })()}
+            )}
 
             {/* Generated Recipes List */}
             {generatedMeals.length > 0 && (
@@ -2227,6 +2332,13 @@ Requirements:
 
       {/* Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 text-xs font-bold z-40">
+        <button 
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'home' ? 'text-emerald-600' : 'text-slate-500'}`}
+        >
+          <span>🏠</span>
+          <span>Home</span>
+        </button>
         <button 
           onClick={() => setActiveTab('meal_planning')}
           className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'meal_planning' ? 'text-emerald-600' : 'text-slate-500'}`}
