@@ -891,6 +891,9 @@ Each item in the array MUST strictly follow this JSON schema:
         throw lastErr || new Error('AI returned invalid data after 3 attempts');
       }
       setGeneratedMeals(bestPlan);
+      // Fridge contents were just planned around — clear so stale items don't carry into next week's plan
+      setFridgeNotes('');
+      persistLocal('fridge', '');
       setLoadedPlanDates(plannedISOs);
       setAllergyWarnings(scanAllergies(bestPlan, allAllergies));
       setDuplicateNotes(findDuplicateTitles(bestPlan));
