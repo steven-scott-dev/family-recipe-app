@@ -133,7 +133,7 @@ export default function App() {
 
   // Revolution v1: learning loop + calendar sync
   // Paste your Google OAuth client ID here (see GOOGLE_CALENDAR_SETUP.md). Leave empty to hide calendar sync.
-  const GOOGLE_CLIENT_ID = '483730315610-v41evi8to910ci18bi9dg0ilapt0li54.apps.googleusercontent.com';
+  const GOOGLE_CLIENT_ID = '886519573185-los3jpdhjecc95s5b6m66hmtig8tim9k.apps.googleusercontent.com';
   const [tasteProfile, setTasteProfile] = useState(null); // { ratedCount, loves:[], avoids:[] }
   const [calConnected, setCalConnected] = useState(false);
   const [calChecking, setCalChecking] = useState(false);
