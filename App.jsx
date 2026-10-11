@@ -1078,13 +1078,23 @@ Each item in the array MUST strictly follow this JSON schema:
   const singular = (w) => w.replace(/s$/, '');
 
   // Normalize ingredient names so the same item merges across recipes:
-  // "black beans, drained and rinsed" and "black beans (15 oz)" both -> "black beans"
-  const normShopName = (name) => String(name || '')
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, ' ')
-    .split(/[,;]/)[0]
-    .replace(/\s+/g, ' ')
-    .trim();
+  // "black beans, drained and rinsed" and "black beans (15 oz)" both -> "black beans".
+  // Also singularizes the last word so "bell peppers" merges with "bell pepper".
+  const normShopName = (name) => {
+    const cleaned = String(name || '')
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .split(/[,;]/)[0]
+      .replace(/\s+/g, ' ')
+      .trim();
+    const words = cleaned.split(' ');
+    const last = words[words.length - 1] || '';
+    if (last.length > 3 && last.endsWith('s') && !last.endsWith('ss')) {
+      // "tomatoes" -> "tomato", "peppers" -> "pepper"
+      words[words.length - 1] = last.endsWith('oes') ? last.slice(0, -2) : last.slice(0, -1);
+    }
+    return words.join(' ');
+  };
 
   // Pluralize count-type units for display: "2 cans", not "2 can"
   const COUNT_UNITS = ['can', 'clove', 'slice', 'piece', 'stalk', 'bunch', 'cup'];
