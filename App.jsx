@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import StatsDashboard from './StatsDashboard';
+import RecipeImporter from './RecipeImporter';
 
 const LEGAL_DOCS = {
   privacy: {
@@ -2396,6 +2397,11 @@ Requirements:
           </div>
         )}
 
+        {/* TAB: RECIPES (Mealime import + recipe box) */}
+        {activeTab === 'recipes' && (
+          <RecipeImporter supabase={supabase} userId={session?.user?.id} />
+        )}
+
       </main>
 
       {/* SHOPPING LIST MODAL */}
@@ -2672,6 +2678,13 @@ Requirements:
         >
           <span>🥗</span>
           <span>Meals</span>
+        </button>
+        <button 
+          onClick={() => navigate('recipes')}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'recipes' ? 'text-emerald-600' : 'text-slate-500'}`}
+        >
+          <span>📖</span>
+          <span>Recipes</span>
         </button>
         <button 
           onClick={() => navigate('setup')}
