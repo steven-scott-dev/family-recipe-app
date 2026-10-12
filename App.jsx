@@ -1477,47 +1477,80 @@ Requirements:
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow space-y-4">
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-slate-800">SupperLine</h1>
-            <p className="text-xs text-slate-500 mt-1">Sign in to access your family's meal plans</p>
+      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10">
+        <header className="bg-slate-900 text-white">
+          <div className="max-w-md mx-auto px-4 py-10 text-center">
+            <h1 className="text-3xl font-bold tracking-tight">SupperLine</h1>
+            <p className="text-emerald-400 font-semibold mt-3 text-lg">Mealime is shutting down Oct 21.</p>
+            <p className="text-slate-300 mt-2 text-sm">SupperLine is the replacement. Free during launch.</p>
+            <a href="#signin" className="inline-block mt-5 bg-emerald-600 text-white font-bold text-sm px-6 py-3 rounded-lg">
+              Start planning free
+            </a>
           </div>
-          {authSent ? (
-            <p className="text-sm text-slate-600 text-center">
-              Check your email for the sign-in link — it may take a minute to arrive.
-            </p>
-          ) : (
-            <>
-            <form onSubmit={handleLogin} className="space-y-3">
-              <input
-                type="email"
-                required
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-bold"
-              >
-                Send sign-in link
-              </button>
-            </form>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="flex-1 border-t border-slate-200" />
-              or
-              <span className="flex-1 border-t border-slate-200" />
+        </header>
+
+        <main className="max-w-md mx-auto px-4 py-6 space-y-4">
+          <section className="bg-white rounded-xl p-5 shadow">
+            <h2 className="font-bold mb-3">Built for what Mealime never fixed</h2>
+            <ul className="space-y-3 text-sm text-slate-600">
+              <li><span className="font-bold text-slate-800">Portions per person.</span> Small, standard, or large for each family member. Never locked to 2, 4, or 6 servings.</li>
+              <li><span className="font-bold text-slate-800">Your budget is the law.</span> Set your weekly grocery budget and the plan must come in under it.</li>
+              <li><span className="font-bold text-slate-800">A real calendar.</span> Month view with busy-night awareness and Google Calendar sync. Not a list.</li>
+              <li><span className="font-bold text-slate-800">One merged shopping list.</span> Duplicates combined and units rounded up. No 3.7 cans of beans.</li>
+            </ul>
+          </section>
+
+          <section className="bg-white rounded-xl p-5 shadow">
+            <h2 className="font-bold mb-3">How it works</h2>
+            <ol className="space-y-2 text-sm text-slate-600 list-decimal list-inside">
+              <li>Tell it your family: who eats, likes, dislikes, allergies.</li>
+              <li>Set your weekly grocery budget.</li>
+              <li>Get a week of dinners plus one shopping list.</li>
+            </ol>
+          </section>
+
+          <section id="signin" className="bg-white rounded-xl p-6 shadow space-y-4">
+            <div className="text-center">
+              <h2 className="text-lg font-bold">Start planning</h2>
+              <p className="text-xs text-slate-500 mt-1">Free during launch. Sign in with email or Google.</p>
             </div>
-            <button
-              onClick={handleGoogleLogin}
-              className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-50"
-            >
-              Sign in with Google
-            </button>
-            </>
-          )}
+            {authSent ? (
+              <p className="text-sm text-slate-600 text-center">
+                Check your email for the sign-in link \u2014 it may take a minute to arrive.
+              </p>
+            ) : (
+              <>
+              <form onSubmit={handleLogin} className="space-y-3">
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-bold"
+                >
+                  Send sign-in link
+                </button>
+              </form>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="flex-1 border-t border-slate-200" />
+                or
+                <span className="flex-1 border-t border-slate-200" />
+              </div>
+              <button
+                onClick={handleGoogleLogin}
+                className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-50"
+              >
+                Sign in with Google
+              </button>
+              </>
+            )}
+          </section>
+
           <p className="text-center text-[11px] text-slate-400 pt-1">
             <button className="underline" onClick={() => setLegalView('privacy')}>Privacy Policy</button>
             {' \u00b7 '}
@@ -1527,8 +1560,8 @@ Requirements:
             {' \u00b7 '}
             <a className="underline" href="https://m.me/1403473456182680" target="_blank" rel="noreferrer">Messenger</a>
           </p>
-        </div>
-      {legalView && (
+        </main>
+{legalView && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setLegalView(null)}>
           <div className="bg-white rounded-xl max-w-md w-full max-h-[85vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-start mb-4">
