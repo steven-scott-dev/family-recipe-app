@@ -367,6 +367,72 @@ export default function App() {
     }
   }
 
+  // Export all user data as a JSON download (privacy policy promise)
+  const [isExporting, setIsExporting] = useState(false);
+  async function handleExportData() {
+    if (!family?.id && !session?.user?.id) return alert('Nothing to export yet.');
+    setIsExporting(true);
+    try {
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        app: 'SupperLine',
+        family: null,
+        members: [],
+        meal_plans: [],
+        saved_recipes: [],
+      };
+
+      // Family profile + members
+      if (family?.id) {
+        const { data: fam } = await supabase.from('families').select('*').eq('id', family.id).maybeSingle();
+        if (fam) exportData.family = fam;
+        const { data: mems } = await supabase.from('family_members').select('*').eq('family_id', family.id);
+        if (mems) exportData.members = mems;
+
+        // Meal plans + their meals
+        const { data: plans } = await supabase
+          .from('meal_plans')
+          .select('*')
+          .eq('family_id', family.id)
+          .order('created_at', { ascending: false });
+        if (plans?.length) {
+          const planIds = plans.map(p => p.id);
+          const { data: allMeals } = await supabase.from('meals').select('*').in('plan_id', planIds);
+          const mealsByPlan = {};
+          (allMeals || []).forEach(m => {
+            (mealsByPlan[m.plan_id] = mealsByPlan[m.plan_id] || []).push(m);
+          });
+          exportData.meal_plans = plans.map(p => ({ ...p, meals: mealsByPlan[p.id] || [] }));
+        }
+      }
+
+      // Saved recipe box
+      if (session?.user?.id) {
+        const { data: recipes } = await supabase
+          .from('saved_recipes')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+        if (recipes) exportData.saved_recipes = recipes;
+      }
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `supperline-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Export failed: ' + (err.message || 'unknown error'));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   // Toggle helper for multi-select buttons
   const toggleArrayItem = (list, setList, item) => {
     if (list.includes(item)) {
@@ -2436,6 +2502,19 @@ Requirements:
                 ))}
               </div>
             )}
+
+            {/* DATA EXPORT */}
+            <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
+              <h2 className="text-base font-bold text-slate-800">Your Data</h2>
+              <p className="text-xs text-slate-500">Download everything SupperLine has about your household: family profile, meal plans, saved recipes.</p>
+              <button
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="w-full bg-emerald-600 text-white py-2 rounded text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {isExporting ? 'Exporting…' : 'Export My Data (JSON)'}
+              </button>
+            </div>
           </div>
         )}
 
