@@ -1161,13 +1161,15 @@ Each item in the array MUST strictly follow this JSON schema:
     generatedMeals.forEach((meal) => {
       (meal.ingredients || []).forEach((ing) => {
         const p = parseIngredientDetail(ing);
-        const key = p.name + '|' + p.unit;
+        const key = p.name; // merge by name across units: "3 cans + 0.5 cups" beats two lines
         if (!groups[key]) {
-          groups[key] = { name: p.name, unit: p.unit, qty: 0, hasQty: false, meals: [] };
+          groups[key] = { name: p.name, parts: [], hasQty: false, meals: [] };
         }
         const g = groups[key];
         if (p.qty != null) {
-          g.qty += p.qty;
+          const existing = g.parts.find((pt) => pt.unit === p.unit);
+          if (existing) existing.qty += p.qty;
+          else g.parts.push({ unit: p.unit, qty: p.qty });
           g.hasQty = true;
         }
         const label = `${meal.day} ${meal.type}`;
@@ -1178,12 +1180,19 @@ Each item in the array MUST strictly follow this JSON schema:
     const aisleRank = Object.fromEntries(AISLE_ORDER.map((a, i) => [a, i]));
     return Object.values(groups)
       .map((g, i) => {
-        const q = buyQty(g.unit, g.qty);
+        let display;
+        if (!g.hasQty) {
+          display = cap(g.name);
+        } else {
+          const bits = g.parts.map((pt) => {
+            const q = buyQty(pt.unit, pt.qty);
+            return `${fmtQty(q)}${pt.unit ? ' ' + pluralUnit(pt.unit, q) : ''}`;
+          });
+          display = `${cap(g.name)} — ${bits.join(' + ')}`;
+        }
         return {
           id: i,
-          display: g.hasQty
-            ? `${cap(g.name)} — ${fmtQty(q)}${g.unit ? ' ' + pluralUnit(g.unit, q) : ''}`
-            : cap(g.name),
+          display,
           meals: g.meals,
           aisle: aisleOf(g.name),
         };
