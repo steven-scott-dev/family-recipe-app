@@ -1132,6 +1132,30 @@ Each item in the array MUST strictly follow this JSON schema:
     return { qty: val, unit, name: normShopName(name) };
   };
 
+  // ---- Aisle grouping for the shopping list: walk the store once ----
+  const AISLE_ORDER = ['Produce', 'Meat & Seafood', 'Dairy & Eggs', 'Bakery & Bread', 'Frozen', 'Canned & Jarred', 'Dry Goods & Pasta', 'Spices & Condiments', 'Snacks & Beverages', 'Other'];
+  const AISLE_KEYWORDS = {
+    'Produce': ['bell pepper', 'jalape', 'poblano', 'brussels sprout', 'green bean', 'snow pea', 'sweet potato', 'butternut', 'spaghetti squash', 'cherry tomato', 'grape tomato', 'red onion', 'green onion', 'spring onion', 'lettuce', 'tomato', 'onion', 'garlic', 'potato', 'carrot', 'celery', 'cucumber', 'spinach', 'kale', 'broccoli', 'cabbage', 'mushroom', 'zucchini', 'squash', 'avocado', 'lemon', 'lime', 'apple', 'banana', 'orange', 'berries', 'berry', 'grape', 'cilantro', 'parsley', 'basil', 'ginger', 'corn', 'asparagus', 'cauliflower', 'eggplant', 'leek', 'radish', 'beet', 'pea', 'scallion', 'shallot', 'chive', 'dill', 'mint', 'rosemary', 'thyme', 'oregano', 'arugula', 'endive', 'bok choy', 'artichoke', 'okra', 'turnip', 'rutabaga', 'parsnip', 'pumpkin', 'mango', 'pineapple', 'peach', 'pear', 'plum', 'kiwi', 'melon', 'strawberr'],
+    'Meat & Seafood': ['chicken', 'turkey', 'beef', 'pork', 'bacon', 'sausage', 'ham', 'steak', 'ground ', 'shrimp', 'salmon', 'tuna', 'tilapia', 'cod', 'fish', 'crab', 'lobster', 'meatball', 'pepperoni', 'chorizo', 'hot dog', 'brisket', 'rib', 'pancetta', 'prosciutto', 'salami', 'anchov', 'mussel', 'clam', 'scallop', 'tofu', 'tempeh'],
+    'Dairy & Eggs': ['mozzarella', 'parmesan', 'cheddar', 'cottage cheese', 'cream cheese', 'sour cream', 'half-and-half', 'half and half', 'whipped cream', 'buttermilk', 'milk', 'cheese', 'butter', 'yogurt', 'cream', 'egg'],
+    'Bakery & Bread': ['tortilla', 'pizza dough', 'bread', 'bun', 'roll', 'bagel', 'pita', 'croissant', 'baguette', 'english muffin'],
+    'Frozen': ['frozen'],
+    'Canned & Jarred': ['canned', 'coconut milk', 'tomato sauce', 'marinara', 'salsa', 'pickle', 'olive', 'capers', 'broth', 'stock', 'tomato paste', 'diced tomato', 'crushed tomato', 'sauce', 'jar'],
+    'Dry Goods & Pasta': ['spaghetti', 'macaroni', 'fettuccine', 'penne', 'lasagna noodle', 'egg noodle', 'ramen', 'pasta', 'noodle', 'rice', 'quinoa', 'oats', 'oatmeal', 'cereal', 'flour', 'sugar', 'lentil', 'chickpea', 'kidney bean', 'black bean', 'pinto bean', 'white bean', 'bean', 'breadcrumb', 'panko', 'pancake mix', 'cornstarch', 'tortilla chip'],
+    'Spices & Condiments': ['black pepper', 'red pepper flake', 'chili powder', 'garlic powder', 'onion powder', 'cumin', 'paprika', 'cinnamon', 'nutmeg', 'oregano', 'basil', 'vanilla', 'baking powder', 'baking soda', 'yeast', 'honey', 'maple syrup', 'olive oil', 'vegetable oil', 'sesame oil', 'coconut oil', 'vinegar', 'soy sauce', 'worcestershire', 'mustard', 'ketchup', 'mayo', 'mayonnaise', 'hot sauce', 'sriracha', 'barbecue sauce', 'teriyaki', 'seasoning', 'taco seasoning', 'salt', 'pepper', 'cayenne', 'curry'],
+    'Snacks & Beverages': ['potato chip', 'tortilla chip', 'cracker', 'cookie', 'pretzel', 'popcorn', 'nut', 'almond', 'peanut', 'walnut', 'cashew', 'trail mix', 'granola', 'juice', 'soda', 'coffee', 'tea', 'water', 'lemonade', 'chocolate chip'],
+  };
+  // Longest keywords first so "bell pepper" beats "pepper".
+  Object.values(AISLE_KEYWORDS).forEach((kws) => kws.sort((a, b) => b.length - a.length));
+  const aisleOf = (name) => {
+    const n = ' ' + String(name || '').toLowerCase() + ' ';
+    for (const aisle of AISLE_ORDER) {
+      if (aisle === 'Other') continue;
+      if (AISLE_KEYWORDS[aisle].some((kw) => n.includes(kw))) return aisle;
+    }
+    return 'Other';
+  };
+
   const buildShoppingList = () => {
     const groups = {};
     generatedMeals.forEach((meal) => {
@@ -1151,6 +1175,7 @@ Each item in the array MUST strictly follow this JSON schema:
       });
     });
     const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+    const aisleRank = Object.fromEntries(AISLE_ORDER.map((a, i) => [a, i]));
     return Object.values(groups)
       .map((g, i) => {
         const q = buyQty(g.unit, g.qty);
@@ -1160,9 +1185,10 @@ Each item in the array MUST strictly follow this JSON schema:
             ? `${cap(g.name)} — ${fmtQty(q)}${g.unit ? ' ' + pluralUnit(g.unit, q) : ''}`
             : cap(g.name),
           meals: g.meals,
+          aisle: aisleOf(g.name),
         };
       })
-      .sort((a, b) => a.display.localeCompare(b.display));
+      .sort((a, b) => (aisleRank[a.aisle] - aisleRank[b.aisle]) || a.display.localeCompare(b.display));
   };
 
   const openShopping = () => {
@@ -1223,10 +1249,17 @@ Each item in the array MUST strictly follow this JSON schema:
 
   const copyShoppingList = () => {
     if (!shoppingList) return;
-    const text = shoppingList
-      .filter((i) => !isOwned(i))
-      .map((i) => `\u2022 ${i.display}`)
-      .join('\n');
+    const toBuy = shoppingList.filter((i) => !isOwned(i));
+    const lines = [];
+    AISLE_ORDER.forEach((aisle) => {
+      const items = toBuy.filter((i) => (i.aisle || 'Other') === aisle);
+      if (items.length) {
+        lines.push(aisle.toUpperCase());
+        items.forEach((i) => lines.push(`\u2022 ${i.display}`));
+        lines.push('');
+      }
+    });
+    const text = lines.join('\n');
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
         () => alert('Shopping list copied!'),
@@ -2446,14 +2479,25 @@ Requirements:
                 {(() => {
                   const toBuy = shoppingList.filter((i) => !isOwned(i));
                   const owned = shoppingList.filter(isOwned);
+                  const byAisle = {};
+                  toBuy.forEach((item) => {
+                    (byAisle[item.aisle || 'Other'] = byAisle[item.aisle || 'Other'] || []).push(item);
+                  });
                   return (
                     <React.Fragment>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         {toBuy.length} to buy · tap to check off
                       </p>
-                <ul className="space-y-1.5">
-                  {toBuy.map((item) => renderShopItem(item, false))}
-                </ul>
+                {AISLE_ORDER.filter((aisle) => byAisle[aisle]).map((aisle) => (
+                  <React.Fragment key={aisle}>
+                    <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider pt-1">
+                      {aisle}
+                    </p>
+                    <ul className="space-y-1.5">
+                      {byAisle[aisle].map((item) => renderShopItem(item, false))}
+                    </ul>
+                  </React.Fragment>
+                ))}
                 {owned.length > 0 && (
                   <React.Fragment>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider pt-1">
