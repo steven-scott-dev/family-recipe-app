@@ -368,8 +368,7 @@ export default function App() {
   }
 
   // Export all user data as a JSON download (privacy policy promise)
-  const [isExporting, setIsExporting] = useState(false);
-  async function handleExportData() {
+  const [isExporting, setIsExporting] = useState(false);  async function handleExportData() {
     if (!family?.id && !session?.user?.id) return alert('Nothing to export yet.');
     setIsExporting(true);
     try {
@@ -431,6 +430,25 @@ export default function App() {
     } finally {
       setIsExporting(false);
     }
+  }
+
+  // Drag-and-drop / tap-to-move: rearrange meals across days in the Weekly Schedule.
+  // On touch devices tap the ⋮⋮ grip, then tap a day header. On desktop drag the grip.
+  // If the target day already has the same meal type, the two swap; otherwise the meal moves.
+  const [moveIdx, setMoveIdx] = useState(null);
+  function moveMealToDay(idx, targetDay) {
+    const meal = generatedMeals[idx];
+    if (!meal || meal.day === targetDay) { setMoveIdx(null); return; }
+    const updated = [...generatedMeals];
+    const conflictIdx = updated.findIndex((m, i) => i !== idx && m.day === targetDay && m.type === meal.type);
+    if (conflictIdx >= 0) {
+      updated[conflictIdx] = { ...updated[conflictIdx], day: meal.day };
+      updated[idx] = { ...meal, day: targetDay };
+    } else {
+      updated[idx] = { ...meal, day: targetDay };
+    }
+    setGeneratedMeals(updated);
+    setMoveIdx(null);
   }
 
   // Toggle helper for multi-select buttons
@@ -2196,31 +2214,62 @@ Requirements:
                   );
                 })()}
 
-                <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                  {generatedMeals.map((meal, idx) => {
-                    const avg = avgRating(meal);
-                    const flagged = allergyWarnings.some((w) => w.key === `${meal.day}|${meal.type}|${meal.title}`);
-                    return (
-                    <div 
-                      key={idx} 
-                      onClick={() => setSelectedRecipe(meal)}
-                      className="bg-white p-3 rounded-lg border border-slate-200 text-xs flex justify-between items-center shadow-sm cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/40 transition"
-                    >
-                      <div>
-                        <p className="font-bold text-slate-800">
-                          {flagged && <span className="text-red-500 mr-1">⚠️</span>}
-                          {meal.modular && <span className="mr-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">🍱 build-your-own</span>}
-                          {meal.displayTitle || `${meal.day} ${meal.type}: ${meal.title}`}
-                        </p>
-                        <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
+                <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+                  {(() => {
+                    const dayOrder = [];
+                    generatedMeals.forEach(m => { if (!dayOrder.includes(m.day)) dayOrder.push(m.day); });
+                    return dayOrder.map(day => (
+                      <div key={day}>
+                        <div
+                          onClick={() => { if (moveIdx !== null) moveMealToDay(moveIdx, day); }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => { e.preventDefault(); const i = Number(e.dataTransfer.getData('text/plain')); if (!isNaN(i)) moveMealToDay(i, day); }}
+                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded ${moveIdx !== null ? 'bg-emerald-100 text-emerald-800 cursor-pointer hover:bg-emerald-200' : 'text-slate-500'}`}
+                        >
+                          {day}{moveIdx !== null && ' — tap to move here'}
+                        </div>
+                        <div className="space-y-2 mt-1">
+                        {generatedMeals.map((meal, idx) => {
+                          if (meal.day !== day) return null;
+                          const avg = avgRating(meal);
+                          const flagged = allergyWarnings.some((w) => w.key === `${meal.day}|${meal.type}|${meal.title}`);
+                          const moving = moveIdx === idx;
+                          return (
+                          <div
+                            key={idx}
+                            onClick={() => setSelectedRecipe(meal)}
+                            className={`bg-white p-3 rounded-lg border text-xs flex justify-between items-center shadow-sm cursor-pointer transition ${moving ? 'border-emerald-500 ring-2 ring-emerald-300' : 'border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40'}`}
+                          >
+                            <div className="flex items-start gap-2 min-w-0">
+                              <span
+                                draggable
+                                onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(idx)); e.stopPropagation(); }}
+                                onClick={(e) => { e.stopPropagation(); setMoveIdx(moving ? null : idx); }}
+                                title="Drag or tap to move this meal to another day"
+                                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-emerald-600 text-base leading-none pt-0.5 select-none shrink-0"
+                              >
+                                ⋮⋮
+                              </span>
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-800">
+                                  {flagged && <span className="text-red-500 mr-1">⚠️</span>}
+                                  {meal.modular && <span className="mr-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">🍱 build-your-own</span>}
+                                  {meal.displayTitle || `${meal.type}: ${meal.title}`}
+                                </p>
+                                <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
+                              </div>
+                            </div>
+                            <span className="text-right ml-2 shrink-0">
+                              <span className="font-semibold text-slate-600 block">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
+                              {avg && <span className="text-amber-500 text-[11px] font-bold">★ {avg.toFixed(1)}</span>}
+                            </span>
+                          </div>
+                          );
+                        })}
+                        </div>
                       </div>
-                      <span className="text-right ml-2 shrink-0">
-                        <span className="font-semibold text-slate-600 block">${meal.price ? meal.price.toFixed(2) : '0.00'} <span className="font-normal text-slate-400">est.</span></span>
-                        {avg && <span className="text-amber-500 text-[11px] font-bold">★ {avg.toFixed(1)}</span>}
-                      </span>
-                    </div>
-                    );
-                  })}
+                    ));
+                  })()}
                 </div>
 
                               </div>
