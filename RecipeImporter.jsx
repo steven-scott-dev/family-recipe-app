@@ -5,13 +5,14 @@ import React, { useState, useEffect } from 'react';
 export default function RecipeImporter({ supabase, userId }) {
   const [catalog, setCatalog] = useState([]);
   const [query, setQuery] = useState('');
-  const [pasteUrl, setPasteUrl] = useState('');
+  const [pasteUrls, setPasteUrls] = useState('');
   const [preview, setPreview] = useState(null); // recipe fetched, not yet saved
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState([]);
   const [viewing, setViewing] = useState(null);
   const [savedIds, setSavedIds] = useState(new Set());
+  const [batch, setBatch] = useState(null); // {done, total, results} for multi-link import
 
   useEffect(() => {
     fetch('/mealime-catalog.json')
@@ -38,6 +39,7 @@ export default function RecipeImporter({ supabase, userId }) {
     setBusy(true);
     setError('');
     setPreview(null);
+    setBatch(null);
     try {
       const r = await fetch('/api/import-recipe?url=' + encodeURIComponent(url));
       const j = await r.json();
@@ -48,6 +50,54 @@ export default function RecipeImporter({ supabase, userId }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  // Batch import: one URL per line, imports + saves each, shows a summary.
+  const importBatch = async (urls) => {
+    const unique = [...new Set(urls)];
+    setBusy(true);
+    setError('');
+    setPreview(null);
+    setBatch({ done: 0, total: unique.length, results: [] });
+    const results = [];
+    for (const url of unique) {
+      if (savedIds.has(url)) {
+        results.push({ url, skipped: true });
+      } else {
+        try {
+          const r = await fetch('/api/import-recipe?url=' + encodeURIComponent(url));
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || 'Import failed.');
+          const { error } = await supabase.from('saved_recipes').insert([
+            {
+              user_id: userId,
+              name: j.name,
+              source_url: j.sourceUrl,
+              servings: j.servings,
+              cooking_minutes: j.cookingMinutes,
+              image_url: j.imageUrl,
+              ingredients: j.ingredients,
+              steps: j.steps,
+            },
+          ]);
+          if (error) throw new Error('Could not save.');
+          results.push({ url, name: j.name });
+        } catch (e) {
+          results.push({ url, error: e.message || 'Import failed.' });
+        }
+      }
+      setBatch({ done: results.length, total: unique.length, results: [...results] });
+    }
+    setBusy(false);
+    setPasteUrls('');
+    loadSaved();
+  };
+
+  const handleImport = () => {
+    const urls = pasteUrls.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+    if (!urls.length) return;
+    if (urls.length === 1) importFromUrl(urls[0]);
+    else importBatch(urls);
   };
 
   const savePreview = async () => {
@@ -72,7 +122,7 @@ export default function RecipeImporter({ supabase, userId }) {
       return;
     }
     setPreview(null);
-    setPasteUrl('');
+    setPasteUrls('');
     loadSaved();
   };
 
@@ -86,27 +136,46 @@ export default function RecipeImporter({ supabase, userId }) {
       <div className="bg-slate-900 text-white rounded-xl p-5">
         <h2 className="font-bold text-lg">Switching from Mealime?</h2>
         <p className="text-sm text-slate-300 mt-1">
-          Grab your favorites before Oct 21. Tap a recipe below, or paste any mealime.com recipe link.
+          Grab your favorites before Oct 21. Tap a recipe below, or paste your mealime.com recipe links —
+          one link or a whole list, one per line — and bring them all over at once.
         </p>
-        <div className="flex gap-2 mt-3">
-          <input
-            value={pasteUrl}
-            onChange={(e) => setPasteUrl(e.target.value)}
-            placeholder="Paste mealime.com recipe link"
-            className="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm text-slate-800"
-          />
-          <button
-            onClick={() => pasteUrl.trim() && importFromUrl(pasteUrl.trim())}
-            disabled={busy || !pasteUrl.trim()}
-            className="bg-emerald-600 disabled:opacity-50 text-white text-sm font-bold px-4 py-2 rounded-lg"
-          >
-            Import
-          </button>
-        </div>
+        <textarea
+          value={pasteUrls}
+          onChange={(e) => setPasteUrls(e.target.value)}
+          placeholder={"Paste mealime.com recipe links here,\none per line"}
+          rows={3}
+          className="w-full mt-3 rounded-lg px-3 py-2 text-sm text-slate-800"
+        />
+        <button
+          onClick={handleImport}
+          disabled={busy || !pasteUrls.trim()}
+          className="mt-2 w-full bg-emerald-600 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg"
+        >
+          {busy ? 'Importing…' : 'Import my recipes'}
+        </button>
       </div>
 
       {error && (
         <p className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">{error}</p>
+      )}
+
+      {batch && (
+        <div className="bg-white rounded-xl p-5 shadow space-y-2">
+          <h3 className="font-bold text-sm">
+            {busy ? `Importing… ${batch.done} of ${batch.total}` : `Imported ${batch.results.filter((r) => r.name).length} of ${batch.total}`}
+          </h3>
+          <ul className="text-sm space-y-1 max-h-56 overflow-y-auto">
+            {batch.results.map((r, i) => (
+              <li key={i} className={r.error ? 'text-red-600' : r.skipped ? 'text-slate-400' : 'text-slate-700'}>
+                {r.error
+                  ? `✕ Couldn't import — ${r.error}`
+                  : r.skipped
+                    ? '– Already in your recipes'
+                    : `✓ ${r.name}`}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {preview && (
