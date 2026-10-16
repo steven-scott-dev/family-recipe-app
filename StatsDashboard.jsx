@@ -29,6 +29,7 @@ export default function StatsDashboard() {
   const [totals, setTotals] = useState(null);
   const [weekly, setWeekly] = useState([]);
   const [retention, setRetention] = useState([]);
+  const [visits, setVisits] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -45,6 +46,12 @@ export default function StatsDashboard() {
       setTotals(t.data);
       setWeekly(w.data || []);
       setRetention(r.data || []);
+      // Visits load separately: a missing stats_visits_daily view must not
+      // break the rest of the dashboard.
+      try {
+        const v = await supabase.from('stats_visits_daily').select('*').order('day', { ascending: true });
+        if (!v.error) setVisits(v.data || []);
+      } catch (e) {}
     } catch (e) {
       setError(e.message);
     } finally {
@@ -83,6 +90,12 @@ export default function StatsDashboard() {
 
   const maxPlans = Math.max(1, ...weekly.map((w) => Number(w.plans)));
 
+  // Anonymous site visits, last 7 days (from stats_visits_daily)
+  const weekAgoStr = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+  const visits7d = visits
+    .filter((v) => v.day >= weekAgoStr)
+    .reduce((a, v) => a + Number(v.visits), 0);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -105,6 +118,8 @@ export default function StatsDashboard() {
           value={totals?.avg_cost_30d != null ? `$${Number(totals.avg_cost_30d).toFixed(2)}` : '—'}
           sub="last 30 days"
         />
+        <StatCard label="Visits · 7d" value={visits7d} sub="anonymous pageviews" />
+        <StatCard label="Visits · 30d" value={visits.reduce((a, v) => a + Number(v.visits), 0)} sub="anonymous pageviews" />
       </div>
 
       {/* THE tripwire */}

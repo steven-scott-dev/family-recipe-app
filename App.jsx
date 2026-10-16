@@ -6,10 +6,10 @@ import RecipeImporter from './RecipeImporter';
 const LEGAL_DOCS = {
   privacy: {
     title: 'Privacy Policy',
-    updated: 'September 30, 2026',
+    updated: 'October 16, 2026',
     sections: [
       { h: 'What we collect',
-        p: 'Account info: your email address (used for sign-in).\nFamily profile: family name, weekly grocery budget, and the details you enter for each family member \u2014 name, age, role (parent/child), dietary preferences, allergies, and disliked foods.\nYour activity: meal plans you generate, save, and load, star ratings per family member, and basic usage events (e.g. plan generated) that help us understand whether the app is working.' },
+        p: 'Account info: your email address (used for sign-in).\nFamily profile: family name, weekly grocery budget, and the details you enter for each family member \u2014 name, age, role (parent/child), dietary preferences, allergies, and disliked foods.\nYour activity: meal plans you generate, save, and load, star ratings per family member, and basic usage events (e.g. plan generated) that help us understand whether the app is working. We also count anonymous site visits (page viewed and referrer only \u2014 no IP address is stored) to see whether our outreach is working.' },
       { h: 'How we use it',
         p: 'To generate your meal plans, personalize them to your family\u2019s tastes and budget, and improve the service. We do not sell your personal information. We do not show ads.' },
       { h: 'Who processes your data',
@@ -84,6 +84,18 @@ export default function App() {
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // Anonymous visit counting: one row per tab session. Fails silently until the
+  // site_visits table exists (supabase/migrations/20251016_site_visits.sql).
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('sl_visit')) return;
+      sessionStorage.setItem('sl_visit', '1');
+      supabase.from('site_visits').insert({
+        path: window.location.hash || '/',
+        referrer: document.referrer || null,
+      }).then(() => {}, () => {});
+    } catch (e) {}
   }, []);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [dishPhotos, setDishPhotos] = useState([]); // snap-your-dish photos for the open recipe

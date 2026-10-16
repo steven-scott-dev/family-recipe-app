@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Recipe box: browse the Mealime public catalog, one-tap import via /api/import-recipe,
 // paste any mealime.com link, and keep imported recipes in the saved_recipes table.
@@ -13,6 +13,7 @@ export default function RecipeImporter({ supabase, userId }) {
   const [viewing, setViewing] = useState(null);
   const [savedIds, setSavedIds] = useState(new Set());
   const [batch, setBatch] = useState(null); // {done, total, results} for multi-link import
+  const myRecipesRef = useRef(null);
 
   useEffect(() => {
     fetch('/mealime-catalog.json')
@@ -91,6 +92,40 @@ export default function RecipeImporter({ supabase, userId }) {
     setBusy(false);
     setPasteUrls('');
     loadSaved();
+  };
+
+  // Catalog one-tap import: saves straight to My recipes, no preview step.
+  // (The old preview panel rendered at the top of the tab, off-screen — looked like nothing happened.)
+  const importCatalogRecipe = async (url) => {
+    if (!supabase || !userId || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const r = await fetch('/api/import-recipe?url=' + encodeURIComponent(url));
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Import failed.');
+      const { error } = await supabase.from('saved_recipes').insert([
+        {
+          user_id: userId,
+          name: j.name,
+          source_url: j.sourceUrl,
+          servings: j.servings,
+          cooking_minutes: j.cookingMinutes,
+          image_url: j.imageUrl,
+          ingredients: j.ingredients,
+          steps: j.steps,
+        },
+      ]);
+      if (error) throw new Error('Could not save that recipe. Try again in a moment.');
+      await loadSaved();
+      setTimeout(() => {
+        myRecipesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } catch (e) {
+      setError(e.message || 'Import failed. Check the link and try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleImport = () => {
@@ -252,10 +287,15 @@ export default function RecipeImporter({ supabase, userId }) {
         </div>
       ) : (
         <>
-          {saved.length > 0 && (
-            <div className="bg-white rounded-xl p-5 shadow">
-              <h3 className="font-bold mb-3">My recipes ({saved.length})</h3>
-              <div className="space-y-2">
+          <div ref={myRecipesRef} className="bg-white rounded-xl p-5 shadow scroll-mt-4">
+            <h3 className="font-bold mb-1">My recipes{saved.length > 0 ? ` (${saved.length})` : ''}</h3>
+            {saved.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Nothing saved yet. Import from the Mealime catalog below, or paste your Mealime links above —
+                they'll land here.
+              </p>
+            ) : (
+              <div className="space-y-2 mt-3">
                 {saved.map((r) => (
                   <button
                     key={r.id}
@@ -269,8 +309,8 @@ export default function RecipeImporter({ supabase, userId }) {
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="bg-white rounded-xl p-5 shadow">
             <h3 className="font-bold mb-1">Mealime catalog</h3>
@@ -291,7 +331,7 @@ export default function RecipeImporter({ supabase, userId }) {
                     <span className="text-xs font-bold text-emerald-700 shrink-0">✓ Saved</span>
                   ) : (
                     <button
-                      onClick={() => importFromUrl(r.url)}
+                      onClick={() => importCatalogRecipe(r.url)}
                       disabled={busy}
                       className="shrink-0 text-xs font-bold bg-emerald-600 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg"
                     >
