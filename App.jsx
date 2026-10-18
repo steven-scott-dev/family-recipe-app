@@ -3,13 +3,38 @@ import { supabase } from './supabaseClient';
 import StatsDashboard from './StatsDashboard';
 import RecipeImporter from './RecipeImporter';
 
+// ---- anonymous analytics helpers (module scope) ----
+// sl_sid: random per-browser id in localStorage. Lets us stitch repeat visits
+// into sessions without storing IPs or anything identifying.
+const slSessionId = () => {
+  try {
+    let sid = localStorage.getItem('sl_sid');
+    if (!sid) {
+      sid = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 's' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+      localStorage.setItem('sl_sid', sid);
+    }
+    return sid;
+  } catch (e) { return null; }
+};
+const slLogEvent = (event_type) => {
+  try {
+    supabase.from('visit_events').insert({
+      session_id: slSessionId(),
+      event_type,
+      path: window.location.hash || '/',
+    }).then(() => {}, () => {});
+  } catch (e) {}
+};
+
 const LEGAL_DOCS = {
   privacy: {
     title: 'Privacy Policy',
-    updated: 'October 16, 2026',
+    updated: 'October 18, 2026',
     sections: [
       { h: 'What we collect',
-        p: 'Account info: your email address (used for sign-in).\nFamily profile: family name, weekly grocery budget, and the details you enter for each family member \u2014 name, age, role (parent/child), dietary preferences, allergies, and disliked foods.\nYour activity: meal plans you generate, save, and load, star ratings per family member, and basic usage events (e.g. plan generated) that help us understand whether the app is working. We also count anonymous site visits (page viewed and referrer only \u2014 no IP address is stored) to see whether our outreach is working.' },
+        p: 'Account info: your email address (used for sign-in).\nFamily profile: family name, weekly grocery budget, and the details you enter for each family member \u2014 name, age, role (parent/child), dietary preferences, allergies, and disliked foods.\nYour activity: meal plans you generate, save, and load, star ratings per family member, and basic usage events (e.g. plan generated) that help us understand whether the app is working. We also count anonymous site visits (page viewed, referrer, a random session id stored in your browser, and basic engagement signals like scrolling, time on page, and button clicks \u2014 no IP address is stored) to see whether our outreach is working.' },
       { h: 'How we use it',
         p: 'To generate your meal plans, personalize them to your family\u2019s tastes and budget, and improve the service. We do not sell your personal information. We do not show ads.' },
       { h: 'Who processes your data',
@@ -85,17 +110,37 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
-  // Anonymous visit counting: one row per tab session. Fails silently until the
-  // site_visits table exists (supabase/migrations/20251016_site_visits.sql).
+  // Anonymous visit counting v2: one row per tab session, stitched across
+  // visits by a persistent browser session id (localStorage). Engagement
+  // events (scroll_50, time_30s, cta_click) land in visit_events. Everything
+  // fails silently until the tables/views exist
+  // (supabase/migrations/20251018_visit_analytics_v2.sql).
   useEffect(() => {
+    let cleanup = () => {};
     try {
-      if (sessionStorage.getItem('sl_visit')) return;
-      sessionStorage.setItem('sl_visit', '1');
-      supabase.from('site_visits').insert({
-        path: window.location.hash || '/',
-        referrer: document.referrer || null,
-      }).then(() => {}, () => {});
+      if (!sessionStorage.getItem('sl_visit')) {
+        sessionStorage.setItem('sl_visit', '1');
+        supabase.from('site_visits').insert({
+          path: window.location.hash || '/',
+          referrer: document.referrer || null,
+          session_id: slSessionId(),
+        }).then(() => {}, () => {});
+      }
+      let scrolled = false;
+      const onScroll = () => {
+        if (scrolled) return;
+        const el = document.documentElement;
+        if ((window.scrollY + window.innerHeight) / Math.max(1, el.scrollHeight) >= 0.5) {
+          scrolled = true;
+          slLogEvent('scroll_50');
+          window.removeEventListener('scroll', onScroll);
+        }
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      const t30 = setTimeout(() => slLogEvent('time_30s'), 30000);
+      cleanup = () => { window.removeEventListener('scroll', onScroll); clearTimeout(t30); };
     } catch (e) {}
+    return cleanup;
   }, []);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [dishPhotos, setDishPhotos] = useState([]); // snap-your-dish photos for the open recipe
@@ -1659,7 +1704,7 @@ Requirements:
               </p>
             ) : (
               <>
-              <form onSubmit={handleLogin} className="space-y-3">
+              <form onSubmit={(e) => { slLogEvent('cta_click'); handleLogin(e); }} className="space-y-3">
                 <input
                   type="email"
                   required
@@ -1681,7 +1726,7 @@ Requirements:
                 <span className="flex-1 border-t border-slate-200" />
               </div>
               <button
-                onClick={handleGoogleLogin}
+                onClick={() => { slLogEvent('cta_click'); handleGoogleLogin(); }}
                 className="w-full bg-white border border-slate-300 text-slate-700 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-50"
               >
                 Sign in with Google

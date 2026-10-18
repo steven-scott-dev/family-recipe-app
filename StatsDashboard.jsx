@@ -30,6 +30,10 @@ export default function StatsDashboard() {
   const [weekly, setWeekly] = useState([]);
   const [retention, setRetention] = useState([]);
   const [visits, setVisits] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [referrers, setReferrers] = useState([]);
+  const [engagement, setEngagement] = useState([]);
+  const [engagedSessions, setEngagedSessions] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -51,6 +55,24 @@ export default function StatsDashboard() {
       try {
         const v = await supabase.from('stats_visits_daily').select('*').order('day', { ascending: true });
         if (!v.error) setVisits(v.data || []);
+      } catch (e) {}
+      // v2 analytics views: sessions, referrer breakdown, engagement events.
+      // Same resilience: missing views just leave their sections empty.
+      try {
+        const s = await supabase.from('stats_sessions_daily').select('*').order('day', { ascending: true });
+        if (!s.error) setSessions(s.data || []);
+      } catch (e) {}
+      try {
+        const rf = await supabase.from('stats_visits_by_referrer').select('*').order('day', { ascending: true });
+        if (!rf.error) setReferrers(rf.data || []);
+      } catch (e) {}
+      try {
+        const eg = await supabase.from('stats_engagement_daily').select('*').order('day', { ascending: true });
+        if (!eg.error) setEngagement(eg.data || []);
+      } catch (e) {}
+      try {
+        const es = await supabase.from('stats_engaged_sessions_daily').select('*').order('day', { ascending: true });
+        if (!es.error) setEngagedSessions(es.data || []);
       } catch (e) {}
     } catch (e) {
       setError(e.message);
@@ -96,6 +118,46 @@ export default function StatsDashboard() {
     .filter((v) => v.day >= weekAgoStr)
     .reduce((a, v) => a + Number(v.visits), 0);
 
+  // v2 analytics: sessions + engagement + referrers, last 7 days
+  const sessions7d = sessions
+    .filter((s) => s.day >= weekAgoStr)
+    .reduce((a, s) => a + Number(s.sessions), 0);
+  const engaged7d = engagedSessions
+    .filter((e) => e.day >= weekAgoStr)
+    .reduce((a, e) => a + Number(e.engaged_sessions), 0);
+  const engagementRate7d = sessions7d > 0 ? Math.round((100 * engaged7d) / sessions7d) : 0;
+  const referrerRows = Object.values(
+    referrers
+      .filter((r) => r.day >= weekAgoStr)
+      .reduce((acc, r) => {
+        const k = r.referrer || '(direct)';
+        acc[k] = acc[k] || { referrer: k, visits: 0, sessions: 0 };
+        acc[k].visits += Number(r.visits);
+        acc[k].sessions += Number(r.sessions);
+        return acc;
+      }, {})
+  ).sort((a, b) => b.visits - a.visits);
+  const EVENT_LABELS = { scroll_50: 'Scrolled halfway', time_30s: 'Stayed 30+ sec', cta_click: 'Clicked sign-in' };
+  const engagementRows = Object.values(
+    engagement
+      .filter((e) => e.day >= weekAgoStr)
+      .reduce((acc, e) => {
+        const k = e.event_type;
+        acc[k] = acc[k] || { type: k, events: 0, sessions: 0 };
+        acc[k].events += Number(e.events);
+        acc[k].sessions += Number(e.sessions);
+        return acc;
+      }, {})
+  ).sort((a, b) => b.events - a.events);
+  const shortRef = (r) => {
+    if (r === '(direct)') return r;
+    try {
+      const u = new URL(r);
+      const s = u.hostname + (u.pathname !== '/' ? u.pathname : '');
+      return s.length > 32 ? s.slice(0, 31) + '…' : s;
+    } catch (e) { return r.length > 32 ? r.slice(0, 31) + '…' : r; }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -120,6 +182,8 @@ export default function StatsDashboard() {
         />
         <StatCard label="Visits · 7d" value={visits7d} sub="anonymous pageviews" />
         <StatCard label="Visits · 30d" value={visits.reduce((a, v) => a + Number(v.visits), 0)} sub="anonymous pageviews" />
+        <StatCard label="Sessions · 7d" value={sessions7d} sub="approx. unique browsers" />
+        <StatCard label="Engaged · 7d" value={`${engagementRate7d}%`} sub={`${engaged7d} of ${sessions7d} sessions did something`} />
       </div>
 
       {/* THE tripwire */}
@@ -155,6 +219,56 @@ export default function StatsDashboard() {
               : 'Below the tripwire. Latest cohort may still be maturing (needs a full week).'}
         </p>
       </div>
+
+      {/* Visitor engagement (anonymous), last 7 days */}
+      {(engagementRows.length > 0 || sessions7d > 0) && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <h2 className="text-sm font-extrabold text-slate-800 mb-1">What visitors do</h2>
+          <p className="text-[11px] text-slate-400 mb-3">Last 7 days · anonymous sessions</p>
+          {engagementRows.length === 0 ? (
+            <p className="text-xs text-slate-500">Sessions seen, no engagement yet — visitors are bouncing.</p>
+          ) : (
+            <div className="space-y-2">
+              {engagementRows.map((row) => (
+                <div key={row.type} className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">{EVENT_LABELS[row.type] || row.type}</span>
+                  <span className="font-bold text-slate-800">
+                    {row.sessions} session{row.sessions === 1 ? '' : 's'}
+                    <span className="font-normal text-slate-400"> · {row.events} event{row.events === 1 ? '' : 's'}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Traffic sources (anonymous), last 7 days */}
+      {referrerRows.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <h2 className="text-sm font-extrabold text-slate-800 mb-3">Where visitors come from</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-slate-400 uppercase text-[10px]">
+                  <th className="pb-2 pr-2">Source</th>
+                  <th className="pb-2 pr-2 text-right">Visits</th>
+                  <th className="pb-2 text-right">Sessions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {referrerRows.map((r) => (
+                  <tr key={r.referrer} className="border-t border-slate-100">
+                    <td className="py-1.5 pr-2 font-bold break-all" title={r.referrer}>{shortRef(r.referrer)}</td>
+                    <td className="py-1.5 pr-2 text-right">{r.visits}</td>
+                    <td className="py-1.5 text-right">{r.sessions}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Weekly activity chart */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
