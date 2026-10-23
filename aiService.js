@@ -1,3 +1,45 @@
+import { supabase } from './supabaseClient';
+
+// Estimate full retail package prices for a merged shopping list: one standard
+// package per distinct ingredient (a 2 lb bag of rice, not 2 cups of it).
+// Uses the same generate-meals edge function as plan generation.
+// items: [{ name, display }] -> [{ name, packagePrice, packageLabel }]
+export async function estimatePackagePrices(items) {
+  const list = (items || []).filter((i) => i && i.name);
+  if (!list.length) return [];
+
+  const prompt = `You are a grocery pricing expert for Knoxville, TN supermarkets in 2026. For each shopping-list item below, estimate the price of ONE standard retail package that covers the needed amount (e.g. need "rice — 3 cups" -> one 2 lb bag; need "olive oil — 2 tbsp" -> one 16.9 fl oz bottle; need "black bean — 2 cans" -> price for 2 cans). Use typical store-brand / mainstream US Southeast prices.
+
+Return ONLY a valid JSON array, no markdown or code block backticks. Each element must be:
+{"name": "<copy the item's name EXACTLY as given>", "packagePrice": 1.89, "packageLabel": "2 lb bag"}
+
+Items:
+${list.map((i) => `- name: "${i.name}" | need: ${i.display || i.name}`).join('\n')}`;
+
+  const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-meals', {
+    body: { prompt },
+  });
+  if (fnError) throw new Error(fnError.message);
+  if (!fnData || fnData.error) throw new Error((fnData && fnData.error) || 'No package price response');
+
+  const t = String(fnData.content || '').trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(t);
+  } catch (e) {
+    const start = t.search(/[[{]/);
+    const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+    if (start === -1 || end <= start) throw e;
+    parsed = JSON.parse(t.slice(start, end + 1));
+  }
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') {
+    const arr = Object.values(parsed).find((v) => Array.isArray(v));
+    if (arr) return arr;
+  }
+  throw new Error('Package price response was not an array');
+}
+
 export async function generateAIMealPlan({ members, family, days, mealsPerDay }) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (!apiKey) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import StatsDashboard from './StatsDashboard';
 import RecipeImporter from './RecipeImporter';
+import { estimatePackagePrices } from './aiService';
 
 // ---- anonymous analytics helpers (module scope) ----
 // sl_sid: random per-browser id in localStorage. Lets us stitch repeat visits
@@ -203,6 +204,11 @@ export default function App() {
   const [modularNights, setModularNights] = useState(null); // null = auto (on when a young child is present)
   const [useUpNight, setUseUpNight] = useState(true);
   const [pantryOwned, setPantryOwned] = useState([]); // normalized ingredient names the family already owns
+  // ---- Package-priced list + carryover (2026-10-23) ----
+  const [boughtLog, setBoughtLog] = useState([]); // [{name, date}] list items from archived weeks (not marked owned)
+  const [pkgPrices, setPkgPrices] = useState(null); // {name: {price, label}} package-price estimates for the open list
+  const [pkgStatus, setPkgStatus] = useState('idle'); // idle | loading | done | failed
+  const [needBuyByPlan, setNeedBuyByPlan] = useState({}); // {planSig: [names]} assumed items tapped back to "need to buy"
   const [loadedPlanDates, setLoadedPlanDates] = useState(null); // ISO dates the current plan covers
   const [planHistory, setPlanHistory] = useState([]); // archived past weeks: [{meals, dates, archivedAt}]
   const famKey = (k) => `supperline:${k}:${family?.id || 'nofamily'}`;
@@ -213,6 +219,8 @@ export default function App() {
     try {
       setFridgeNotes(localStorage.getItem(famKey('fridge')) || '');
       setPantryOwned(JSON.parse(localStorage.getItem(famKey('pantry')) || '[]'));
+      try { setBoughtLog(JSON.parse(localStorage.getItem(famKey('boughtlog')) || '[]')); } catch (e2) { setBoughtLog([]); }
+      try { setNeedBuyByPlan(JSON.parse(localStorage.getItem(famKey('needbuy')) || '{}')); } catch (e2) { setNeedBuyByPlan({}); }
       // Restore the working plan draft so generated recipes survive app restarts
       const draft = localStorage.getItem(famKey('draft'));
       if (draft) {
@@ -328,6 +336,31 @@ export default function App() {
       persistLocal('history', JSON.stringify(next));
       return next;
     });
+    // Bought log: this week's list items (minus already-owned) were presumably
+    // bought at the start of that week — remember them so a later week's list
+    // can assume shelf-stable ones are still in the kitchen.
+    try {
+      const boughtDate = [...loadedPlanDates].sort()[0];
+      if (boughtDate && boughtDate <= toISODate(new Date())) {
+        const bought = buildShoppingList()
+          .filter((it) => !isOwned(it))
+          .map((it) => ({ name: normPantryName(it.display), date: boughtDate }))
+          .filter((e) => e.name);
+        if (bought.length) {
+          setBoughtLog((prev) => {
+            const byName = {};
+            (prev || []).forEach((e) => { if (e && e.name) byName[e.name] = e.date; });
+            bought.forEach((e) => { if (!byName[e.name] || e.date > byName[e.name]) byName[e.name] = e.date; });
+            const nextLog = Object.entries(byName)
+              .map(([name, date]) => ({ name, date }))
+              .sort((a, b) => (a.date < b.date ? 1 : -1))
+              .slice(0, 200);
+            persistLocal('boughtlog', JSON.stringify(nextLog));
+            return nextLog;
+          });
+        }
+      }
+    } catch (e) { /* bought log is best-effort — never block archiving */ }
   };
 
   const togglePlanDate = (iso) => {
@@ -1333,6 +1366,7 @@ Each item in the array MUST strictly follow this JSON schema:
         }
         return {
           id: i,
+          name: g.name,
           display,
           meals: g.meals,
           aisle: aisleOf(g.name),
@@ -1349,6 +1383,8 @@ Each item in the array MUST strictly follow this JSON schema:
     setShoppingRange(`${fmt(start)} \u2013 ${fmt(end)}`);
     setShoppingList(null);
     setCheckedItems({});
+    setPkgPrices(null);
+    setPkgStatus('idle');
     setShowShopping(true);
   };
 
@@ -1369,6 +1405,119 @@ Each item in the array MUST strictly follow this JSON schema:
       return next;
     });
   };
+
+  // ---- Carryover: shelf-stable items bought in a recent week are assumed on hand ----
+  // Phrases that mark an item shelf-stable even when they contain a fresh word
+  // ("chicken broth", "peanut butter", "canned diced tomato", "garlic powder").
+  const STABLE_PHRASES = ['frozen', 'canned', 'diced tomato', 'crushed tomato', 'tomato paste', 'tomato sauce', 'coconut milk', 'peanut butter', 'garlic powder', 'onion powder', 'black pepper', 'red pepper flake', 'chili flake', 'broth', 'stock'];
+  // Fresh food NEVER carries over: produce, meat, dairy, eggs, bread.
+  const FRESH_BLOCKERS = ['milk', 'cream', 'cheese', 'butter', 'yogurt', 'egg', 'bread', 'bun', 'roll', 'bagel', 'tortilla', 'lettuce', 'spinach', 'kale', 'arugula', 'tomato', 'onion', 'garlic', 'potato', 'carrot', 'celery', 'cucumber', 'cauliflower', 'avocado', 'lemon', 'lime', 'apple', 'banana', 'orange', 'berry', 'grape', 'cilantro', 'parsley', 'basil', 'dill', 'mint', 'chive', 'mushroom', 'zucchini', 'broccoli', 'cabbage', 'pepper', 'chicken', 'turkey', 'beef', 'pork', 'bacon', 'sausage', 'ham', 'steak', 'shrimp', 'salmon', 'tuna', 'cod', 'tilapia', 'fish', 'crab', 'scallop', 'tofu', 'tempeh', 'meatball', 'pepperoni', 'salami', 'corn', 'green bean', 'snow pea'];
+  const SHELF_KEYWORDS = [...AISLE_KEYWORDS['Dry Goods & Pasta'], ...AISLE_KEYWORDS['Spices & Condiments'], ...AISLE_KEYWORDS['Canned & Jarred'], 'oat', 'jam', 'jelly', 'cocoa', 'coffee', 'tea'];
+  const isShelfStableName = (name) => {
+    const n = ' ' + String(name || '').toLowerCase() + ' ';
+    // Single words match on word boundaries ("roll" must not hit "rolled oat",
+    // "corn" must not hit "cornstarch"); phrases match as substrings.
+    const hit = (kw) => (kw.includes(' ') ? n.includes(kw) : n.includes(' ' + kw + ' '));
+    if (STABLE_PHRASES.some(hit)) return true;
+    if (FRESH_BLOCKERS.some(hit)) return false;
+    return SHELF_KEYWORDS.some(hit);
+  };
+
+  const itemKeyName = (item) => item.name || normPantryName(item.display);
+  const planSig = () => {
+    if (loadedPlanDates && loadedPlanDates.length) return 'd:' + [...loadedPlanDates].sort().join(',');
+    return 'm:' + generatedMeals.map((m) => `${m.day}|${m.type}|${m.title}`).join(';');
+  };
+  // Assumed = bought within the last 21 days + shelf-stable + not owned + not tapped back.
+  const isAssumed = (item) => {
+    if (!item || isOwned(item)) return false;
+    const n = itemKeyName(item);
+    if ((needBuyByPlan[planSig()] || []).includes(n)) return false;
+    const rec = boughtLog.find((e) => e && e.name === n && e.date);
+    if (!rec) return false;
+    const ageMs = Date.now() - parseISODate(rec.date).getTime();
+    if (!(ageMs >= 0 && ageMs <= 21 * 864e5)) return false;
+    return isShelfStableName(n);
+  };
+  const markNeedBuy = (item) => {
+    const n = itemKeyName(item);
+    const sig = planSig();
+    setNeedBuyByPlan((prev) => {
+      const cur = prev[sig] || [];
+      if (cur.includes(n)) return prev;
+      const next = { ...prev, [sig]: [...cur, n] };
+      persistLocal('needbuy', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // ---- Package pricing: price the merged list at full-package prices ----
+  const pkgFor = (item) => {
+    if (!pkgPrices || !item) return null;
+    const n = itemKeyName(item);
+    return pkgPrices[n] || pkgPrices[n + 's'] || pkgPrices[n.replace(/s$/, '')] || null;
+  };
+  const fetchPkgPrices = async (list) => {
+    const sig = planSig();
+    try {
+      const cache = JSON.parse(localStorage.getItem(famKey('pkgcache')) || '{}');
+      if (cache[sig] && cache[sig].prices) {
+        setPkgPrices(cache[sig].prices);
+        setPkgStatus('done');
+        return;
+      }
+    } catch (e) { /* no cache */ }
+    setPkgPrices(null);
+    setPkgStatus('loading');
+    try {
+      const results = await estimatePackagePrices(list.map((it) => ({ name: itemKeyName(it), display: it.display })));
+      const map = {};
+      (results || []).forEach((r) => {
+        if (r && r.name && Number(r.packagePrice) > 0) {
+          map[String(r.name).toLowerCase()] = { price: Number(r.packagePrice), label: r.packageLabel || '' };
+        }
+      });
+      if (!Object.keys(map).length) throw new Error('no package prices returned');
+      setPkgPrices(map);
+      setPkgStatus('done');
+      try {
+        const cache = JSON.parse(localStorage.getItem(famKey('pkgcache')) || '{}');
+        cache[sig] = { at: Date.now(), prices: map };
+        persistLocal('pkgcache', JSON.stringify(cache));
+      } catch (e) { /* cache is best-effort */ }
+    } catch (e) {
+      // Silent fallback: the list just shows without package prices.
+      setPkgStatus('failed');
+      setPkgPrices(null);
+    }
+  };
+  const generateList = () => {
+    const list = buildShoppingList();
+    setShoppingList(list);
+    fetchPkgPrices(list);
+  };
+  const renderAssumedItem = (item) => (
+    <li
+      key={item.id}
+      className="text-xs p-2 rounded-lg border bg-amber-50 border-amber-200 text-slate-600 flex gap-2 items-start"
+    >
+      <span className="mt-0.5">🏠</span>
+      <span className="flex-1">
+        <span className="font-semibold">{item.display}</span>
+        {item.meals.length > 0 && (
+          <span className="block text-[10px] text-slate-400 font-normal">
+            {item.meals.join(', ')}
+          </span>
+        )}
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); markNeedBuy(item); }}
+        className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 text-amber-800"
+      >
+        Need to buy
+      </button>
+    </li>
+  );
   const renderShopItem = (item, owned) => (
     <li
       key={item.id}
@@ -1387,6 +1536,11 @@ Each item in the array MUST strictly follow this JSON schema:
             {item.meals.join(', ')}
           </span>
         )}
+        {!owned && pkgFor(item) && (
+          <span className="block text-[10px] text-slate-400 font-normal">
+            ≈ ${pkgFor(item).price.toFixed(2)}{pkgFor(item).label ? ` · ${pkgFor(item).label}` : ''} pkg (est.)
+          </span>
+        )}
       </span>
       <button
         onClick={(e) => { e.stopPropagation(); togglePantry(item); }}
@@ -1399,7 +1553,7 @@ Each item in the array MUST strictly follow this JSON schema:
 
   const copyShoppingList = () => {
     if (!shoppingList) return;
-    const toBuy = shoppingList.filter((i) => !isOwned(i));
+    const toBuy = shoppingList.filter((i) => !isOwned(i) && !isAssumed(i));
     const lines = [];
     AISLE_ORDER.forEach((aisle) => {
       const items = toBuy.filter((i) => (i.aisle || 'Other') === aisle);
@@ -2662,7 +2816,7 @@ Requirements:
                   across all meals.
                 </p>
                 <button
-                  onClick={() => setShoppingList(buildShoppingList())}
+                  onClick={generateList}
                   className="w-full bg-sky-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-sky-700"
                 >
                   Generate Shopping List
@@ -2671,12 +2825,16 @@ Requirements:
             ) : (
               <div className="space-y-3">
                 {(() => {
-                  const toBuy = shoppingList.filter((i) => !isOwned(i));
+                  const toBuy = shoppingList.filter((i) => !isOwned(i) && !isAssumed(i));
+                  const assumed = shoppingList.filter((i) => !isOwned(i) && isAssumed(i));
                   const owned = shoppingList.filter(isOwned);
                   const byAisle = {};
                   toBuy.forEach((item) => {
                     (byAisle[item.aisle || 'Other'] = byAisle[item.aisle || 'Other'] || []).push(item);
                   });
+                  const tripTotal = pkgStatus === 'done'
+                    ? toBuy.reduce((s, i) => s + (pkgFor(i) ? pkgFor(i).price : 0), 0)
+                    : null;
                   return (
                     <React.Fragment>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -2692,6 +2850,19 @@ Requirements:
                     </ul>
                   </React.Fragment>
                 ))}
+                {assumed.length > 0 && (
+                  <React.Fragment>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider pt-1">
+                      Assumed in your kitchen · {assumed.length}
+                    </p>
+                    <p className="text-[10px] text-slate-400 -mt-1">
+                      Bought in a recent week — tap "Need to buy" if you're out of it.
+                    </p>
+                    <ul className="space-y-1.5">
+                      {assumed.map((item) => renderAssumedItem(item))}
+                    </ul>
+                  </React.Fragment>
+                )}
                 {owned.length > 0 && (
                   <React.Fragment>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider pt-1">
@@ -2701,6 +2872,15 @@ Requirements:
                       {owned.map((item) => renderShopItem(item, true))}
                     </ul>
                   </React.Fragment>
+                )}
+                {pkgStatus === 'loading' && (
+                  <p className="text-xs text-slate-400 pt-1">Estimating this trip's package prices…</p>
+                )}
+                {tripTotal != null && (
+                  <p className="text-xs font-bold text-slate-600 pt-1">
+                    🧾 This trip: ~${tripTotal.toFixed(2)}{' '}
+                    <span className="font-normal text-slate-400">(package-price estimates)</span>
+                  </p>
                 )}
                     </React.Fragment>
                   );
