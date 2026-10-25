@@ -1356,6 +1356,18 @@ Each item in the array MUST strictly follow this JSON schema:
     return words.join(' ');
   };
 
+  // Merge key for the shopping list only: salt variants ("pinch of salt",
+  // "salt and pepper to taste") collapse into one "salt" line. Standalone
+  // pepper ("black pepper") keeps its own line. Stored ingredient names are
+  // untouched — this only changes how list lines group.
+  const mergeKey = (name) => {
+    let k = String(name || '').toLowerCase().trim();
+    k = k.replace(/^pinch of\s+/, '');
+    k = k.replace(/\s+to taste$/, '');
+    if (k === 'salt and pepper') k = 'salt';
+    return k;
+  };
+
   // Pluralize count-type units for display: "2 cans", not "2 can"
   const COUNT_UNITS = ['can', 'clove', 'slice', 'piece', 'stalk', 'bunch', 'cup'];
   const pluralUnit = (unit, qty) => (unit && qty !== 1 && COUNT_UNITS.includes(unit) ? unit + 's' : unit);
@@ -1395,7 +1407,7 @@ Each item in the array MUST strictly follow this JSON schema:
   const AISLE_ORDER = ['Produce', 'Meat & Seafood', 'Dairy & Eggs', 'Bakery & Bread', 'Frozen', 'Canned & Jarred', 'Dry Goods & Pasta', 'Spices & Condiments', 'Snacks & Beverages', 'Other'];
   const AISLE_KEYWORDS = {
     'Produce': ['bell pepper', 'jalape', 'poblano', 'brussels sprout', 'green bean', 'snow pea', 'sweet potato', 'butternut', 'spaghetti squash', 'cherry tomato', 'grape tomato', 'red onion', 'green onion', 'spring onion', 'lettuce', 'tomato', 'onion', 'garlic', 'potato', 'carrot', 'celery', 'cucumber', 'spinach', 'kale', 'broccoli', 'cabbage', 'mushroom', 'zucchini', 'squash', 'avocado', 'lemon', 'lime', 'apple', 'banana', 'orange', 'berries', 'berry', 'grape', 'cilantro', 'parsley', 'basil', 'ginger', 'corn', 'asparagus', 'cauliflower', 'eggplant', 'leek', 'radish', 'beet', 'pea', 'scallion', 'shallot', 'chive', 'dill', 'mint', 'rosemary', 'thyme', 'oregano', 'arugula', 'endive', 'bok choy', 'artichoke', 'okra', 'turnip', 'rutabaga', 'parsnip', 'pumpkin', 'mango', 'pineapple', 'peach', 'pear', 'plum', 'kiwi', 'melon', 'strawberr'],
-    'Meat & Seafood': ['chicken', 'turkey', 'beef', 'pork', 'bacon', 'sausage', 'ham', 'steak', 'ground ', 'shrimp', 'salmon', 'tuna', 'tilapia', 'cod', 'fish', 'crab', 'lobster', 'meatball', 'pepperoni', 'chorizo', 'hot dog', 'brisket', 'rib', 'pancetta', 'prosciutto', 'salami', 'anchov', 'mussel', 'clam', 'scallop', 'tofu', 'tempeh'],
+    'Meat & Seafood': ['chicken', 'turkey', 'beef', 'pork', 'bacon', 'sausage', 'ham', 'steak', 'ground beef', 'ground turkey', 'ground pork', 'ground chicken', 'ground lamb', 'ground meat', 'shrimp', 'salmon', 'tuna', 'tilapia', 'cod', 'fish', 'crab', 'lobster', 'meatball', 'pepperoni', 'chorizo', 'hot dog', 'brisket', 'rib', 'pancetta', 'prosciutto', 'salami', 'anchov', 'mussel', 'clam', 'scallop', 'tofu', 'tempeh'],
     'Dairy & Eggs': ['mozzarella', 'parmesan', 'cheddar', 'cottage cheese', 'cream cheese', 'sour cream', 'half-and-half', 'half and half', 'whipped cream', 'buttermilk', 'milk', 'cheese', 'butter', 'yogurt', 'cream', 'egg'],
     'Bakery & Bread': ['tortilla', 'pizza dough', 'bread', 'bun', 'roll', 'bagel', 'pita', 'croissant', 'baguette', 'english muffin'],
     'Frozen': ['frozen'],
@@ -1420,9 +1432,9 @@ Each item in the array MUST strictly follow this JSON schema:
     generatedMeals.forEach((meal) => {
       (meal.ingredients || []).forEach((ing) => {
         const p = parseIngredientDetail(ing);
-        const key = p.name; // merge by name across units: "3 cans + 0.5 cups" beats two lines
+        const key = mergeKey(p.name); // merge by name across units: "3 cans + 0.5 cups" beats two lines; salt variants collapse to "salt"
         if (!groups[key]) {
-          groups[key] = { name: p.name, parts: [], hasQty: false, meals: [] };
+          groups[key] = { name: key, parts: [], hasQty: false, meals: [] };
         }
         const g = groups[key];
         if (p.qty != null) {
@@ -1541,6 +1553,16 @@ Each item in the array MUST strictly follow this JSON schema:
     if (!pkgPrices || !item) return null;
     const n = itemKeyName(item);
     return pkgPrices[n] || pkgPrices[n + 's'] || pkgPrices[n.replace(/s$/, '')] || null;
+  };
+  // Trip total for a merged list: full-package prices of the to-buy items only.
+  // Null until package prices have loaded, so callers fall back to the
+  // per-portion meal-cost estimate. Shared by the modal header and footer so
+  // the two numbers always agree.
+  const tripTotalOf = (list) => {
+    if (!list || pkgStatus !== 'done') return null;
+    return list
+      .filter((i) => !isOwned(i) && !isAssumed(i))
+      .reduce((s, i) => s + (pkgFor(i) ? pkgFor(i).price : 0), 0);
   };
   const fetchPkgPrices = async (list) => {
     const sig = planSig();
@@ -3032,7 +3054,8 @@ Requirements:
               <div>
                 <h3 className="font-bold text-base text-slate-800">🛒 Shopping List · {shoppingRange}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {days} days · {generatedMeals.length} meals · Est. ${calculateTotalCost().toFixed(2)}
+                  {days} days · {generatedMeals.length} meals · Meal cost est. ${calculateTotalCost().toFixed(2)}
+                  {(() => { const t = tripTotalOf(shoppingList); return t != null ? ` · This trip: ~$${t.toFixed(2)}` : null; })()}
                 </p>
               </div>
               <button
@@ -3071,9 +3094,7 @@ Requirements:
                   toBuy.forEach((item) => {
                     (byAisle[item.aisle || 'Other'] = byAisle[item.aisle || 'Other'] || []).push(item);
                   });
-                  const tripTotal = pkgStatus === 'done'
-                    ? toBuy.reduce((s, i) => s + (pkgFor(i) ? pkgFor(i).price : 0), 0)
-                    : null;
+                  const tripTotal = tripTotalOf(toBuy);
                   return (
                     <React.Fragment>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
