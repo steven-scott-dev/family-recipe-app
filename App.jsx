@@ -209,6 +209,28 @@ export default function App() {
   const [pkgPrices, setPkgPrices] = useState(null); // {name: {price, label}} package-price estimates for the open list
   const [pkgStatus, setPkgStatus] = useState('idle'); // idle | loading | done | failed
   const [needBuyByPlan, setNeedBuyByPlan] = useState({}); // {planSig: [names]} assumed items tapped back to "need to buy"
+  // ---- Kroger cart export (2026-10-25) ----
+  // Client ID is public config; when unset the whole feature hides (button gate).
+  const KROGER_CLIENT_ID = import.meta.env.VITE_KROGER_CLIENT_ID || '';
+  const krogerConfigured = Boolean(KROGER_CLIENT_ID);
+  // Kroger connection is per device/shopper, so tokens/store/pending live under
+  // device-level keys (NOT famKey): the OAuth callback runs on a fresh page load
+  // before the family record loads, and a family-suffixed key would lose them.
+  const krogerKey = (k) => `supperline:kroger-${k}`;
+  const readKroger = (k) => { try { return JSON.parse(localStorage.getItem(krogerKey(k)) || 'null'); } catch (e) { return null; } };
+  const writeKroger = (k, v) => { try { localStorage.setItem(krogerKey(k), JSON.stringify(v)); } catch (e) {} };
+  const dropKroger = (k) => { try { localStorage.removeItem(krogerKey(k)); } catch (e) {} };
+  const [krogerStore, setKrogerStore] = useState(null); // {locationId, name, address}
+  const [krogerTokens, setKrogerTokens] = useState(null); // {access, refresh, expiresAt} (mirror of localStorage)
+  const [krogerStatus, setKrogerStatus] = useState('idle'); // idle | sending | done | error
+  const [krogerResult, setKrogerResult] = useState(null); // {added: [names], missing: [names], error}
+  const [krogerZip, setKrogerZip] = useState('');
+  const [krogerStores, setKrogerStores] = useState(null); // picker results
+  const [krogerStoreLoading, setKrogerStoreLoading] = useState(false);
+  const [krogerShowPicker, setKrogerShowPicker] = useState(false);
+  const [krogerAutoSend, setKrogerAutoSend] = useState(false);
+  const krogerAutoSentRef = useRef(false);
+  const krogerSendAfterStoreRef = useRef(false);
   const [loadedPlanDates, setLoadedPlanDates] = useState(null); // ISO dates the current plan covers
   const [planHistory, setPlanHistory] = useState([]); // archived past weeks: [{meals, dates, archivedAt}]
   const famKey = (k) => `supperline:${k}:${family?.id || 'nofamily'}`;
@@ -221,6 +243,9 @@ export default function App() {
       setPantryOwned(JSON.parse(localStorage.getItem(famKey('pantry')) || '[]'));
       try { setBoughtLog(JSON.parse(localStorage.getItem(famKey('boughtlog')) || '[]')); } catch (e2) { setBoughtLog([]); }
       try { setNeedBuyByPlan(JSON.parse(localStorage.getItem(famKey('needbuy')) || '{}')); } catch (e2) { setNeedBuyByPlan({}); }
+      // Kroger connection (device-level keys — see note on the state block).
+      try { const s = readKroger('store'); if (s && s.locationId) setKrogerStore(s); } catch (e2) {}
+      try { const t = readKroger('tokens'); if (t && t.access) setKrogerTokens(t); } catch (e2) {}
       // Restore the working plan draft so generated recipes survive app restarts
       const draft = localStorage.getItem(famKey('draft'));
       if (draft) {
@@ -237,6 +262,66 @@ export default function App() {
     } catch (e) { /* storage unavailable */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family?.id]);
+  // Kroger OAuth callback: Kroger redirects to the app root with ?code=&state=.
+  // Handled here (not a static page) because the app already holds the signed-in
+  // Supabase session — a static page would have to duplicate auth setup.
+  // Redirect URI to register at developer.kroger.com: the app root, exactly
+  // https://family-recipe-app-puce.vercel.app/ (origin + trailing slash).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const err = params.get('error');
+    if (!code && !err) return;
+    const clean = () => { try { window.history.replaceState({}, '', window.location.pathname + window.location.hash); } catch (e) {} };
+    if (err) {
+      clean();
+      dropKroger('pending');
+      setKrogerResult({ added: [], missing: [], error: 'Kroger sign-in was cancelled or failed. Try again.' });
+      return;
+    }
+    const savedState = readKroger('state');
+    if (!savedState || params.get('state') !== savedState) {
+      clean();
+      dropKroger('pending');
+      setKrogerResult({ added: [], missing: [], error: 'Kroger sign-in check failed. Try again.' });
+      return;
+    }
+    dropKroger('state');
+    clean();
+    (async () => {
+      try {
+        const data = await krogerCall({ action: 'exchange', code, redirectUri: krogerRedirectUri() });
+        if (!data.access_token) throw new Error('No tokens returned');
+        saveKrogerTokens(data);
+        if (readKroger('pending')) setKrogerAutoSend(true);
+      } catch (e) {
+        dropKroger('pending');
+        // The modal may not be open, so say it plainly as well as recording it.
+        alert('Kroger sign-in failed. Please try again.');
+        setKrogerResult({ added: [], missing: [], error: 'Kroger sign-in failed. Try again.' });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // After an OAuth round-trip, reopen the list and send once. The pending flag
+  // carries a timestamp so a stale flag can never trigger a surprise send later.
+  useEffect(() => {
+    if (!krogerAutoSend || krogerAutoSentRef.current) return;
+    const pending = readKroger('pending');
+    if (!pending || Date.now() - (pending.at || 0) > 10 * 60 * 1000) {
+      setKrogerAutoSend(false);
+      dropKroger('pending');
+      return;
+    }
+    if (!generatedMeals.length) return; // wait for the draft plan to restore
+    if (!shoppingList) { generateList(); setShowShopping(true); return; }
+    krogerAutoSentRef.current = true;
+    setKrogerAutoSend(false);
+    dropKroger('pending');
+    setShowShopping(true);
+    sendToKroger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [krogerAutoSend, shoppingList, generatedMeals]);
   // Restore calendar connection once on app start
   useEffect(() => { restoreCalConnection(); }, []);
   // Persist the working plan on every change — it lives until discarded or replaced
@@ -1574,6 +1659,160 @@ Each item in the array MUST strictly follow this JSON schema:
     }
   };
 
+  // ---- Kroger cart export (2026-10-25) ----
+  // Flow: Send button -> (store picker if needed) -> (OAuth if needed) ->
+  // search each buy-list item at the saved store, best match wins -> one bulk
+  // cart add. Kroger has no checkout endpoint: the shopper finishes in Kroger's
+  // app. Quantities are v1-dumb (1 unit per matched item); the shopper adjusts
+  // quantities in Kroger. The browser never touches api.kroger.com directly and
+  // never sees the client secret — everything goes through the kroger-proxy
+  // edge function, which also holds the shopper's tokens only in transit.
+  const krogerRedirectUri = () => `${window.location.origin}/`;
+  const saveKrogerTokens = (t) => {
+    const rec = {
+      access: t.access_token,
+      refresh: t.refresh_token || null,
+      expiresAt: Date.now() + (Number(t.expires_in) || 3600) * 1000 - 60000,
+    };
+    writeKroger('tokens', rec);
+    setKrogerTokens(rec);
+    return rec;
+  };
+  const clearKrogerTokens = () => { dropKroger('tokens'); setKrogerTokens(null); };
+  const krogerCall = async (body) => {
+    const { data, error } = await supabase.functions.invoke('kroger-proxy', { body });
+    if (error) throw new Error(error.message || 'Kroger service error');
+    if (data && data.error) {
+      const e = new Error(data.error);
+      e.code = data.error;
+      throw e;
+    }
+    return data || {};
+  };
+  const krogerRefreshTokens = async () => {
+    const cur = readKroger('tokens');
+    if (!cur || !cur.refresh) return null;
+    try {
+      const data = await krogerCall({ action: 'refresh', refreshToken: cur.refresh });
+      if (!data.access_token) return null;
+      return saveKrogerTokens(data);
+    } catch (e) { return null; }
+  };
+  const isKrogerExpired = (e) => e && (e.code === 'token_expired' || /token_expired/.test(String(e.message || '')));
+  // Runs fn(accessToken); refreshes once on expiry and retries. Returns null
+  // when the connection is dead (caller routes the user back through OAuth).
+  const krogerWithAuth = async (fn) => {
+    let cur = readKroger('tokens');
+    if (!cur || !cur.access) return null;
+    if (cur.expiresAt && Date.now() > cur.expiresAt) {
+      cur = await krogerRefreshTokens();
+      if (!cur) return null;
+    }
+    try { return await fn(cur.access); }
+    catch (e) {
+      if (!isKrogerExpired(e)) throw e;
+      const next = await krogerRefreshTokens();
+      if (!next) { clearKrogerTokens(); return null; }
+      return await fn(next.access);
+    }
+  };
+  const connectKroger = (pendingSend) => {
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    writeKroger('state', state);
+    if (pendingSend) writeKroger('pending', { at: Date.now() });
+    const params = new URLSearchParams({
+      client_id: KROGER_CLIENT_ID,
+      redirect_uri: krogerRedirectUri(),
+      response_type: 'code',
+      scope: 'product.compact cart.basic:write profile.compact',
+      state,
+    });
+    window.location.assign(`https://api.kroger.com/v1/connect/oauth2/authorize?${params.toString()}`);
+  };
+  const findKrogerStores = async () => {
+    const zip = (krogerZip || '').trim();
+    if (!/^\d{5}$/.test(zip)) {
+      setKrogerResult({ added: [], missing: [], error: 'Enter a 5-digit ZIP code first.' });
+      return;
+    }
+    setKrogerStoreLoading(true);
+    setKrogerResult(null);
+    try {
+      const data = await krogerCall({ action: 'locations', zip });
+      const stores = Array.isArray(data.stores) ? data.stores : [];
+      setKrogerStores(stores);
+      if (!stores.length) setKrogerResult({ added: [], missing: [], error: 'No Kroger stores found near that ZIP.' });
+    } catch (e) {
+      setKrogerResult({ added: [], missing: [], error: 'Could not look up stores. Check the ZIP and try again.' });
+    } finally { setKrogerStoreLoading(false); }
+  };
+  const pickKrogerStore = (store) => {
+    writeKroger('store', store);
+    setKrogerStore(store);
+    setKrogerStores(null);
+    setKrogerShowPicker(false);
+    // The user already tapped Send once to get here — finish the job.
+    if (krogerSendAfterStoreRef.current) {
+      krogerSendAfterStoreRef.current = false;
+      sendToKroger();
+    }
+  };
+  const sendToKroger = async () => {
+    if (!krogerConfigured || !shoppingList) return;
+    const toBuy = shoppingList.filter((i) => !isOwned(i) && !isAssumed(i));
+    if (!toBuy.length) {
+      setKrogerResult({ added: [], missing: [], error: 'Nothing to send — everything is already owned or assumed on hand.' });
+      return;
+    }
+    if (!readKroger('tokens')) { connectKroger(true); return; }
+    const store = readKroger('store');
+    if (!store || !store.locationId) {
+      krogerSendAfterStoreRef.current = true;
+      setKrogerShowPicker(true);
+      return;
+    }
+    setKrogerStatus('sending');
+    setKrogerResult(null);
+    // Whole send runs under one auth wrapper: if any call hits an expired
+    // token, it refreshes and retries the whole send once. A 401 from the add
+    // itself means Kroger rejected it, so nothing was added — retry is safe.
+    const runSend = async (access) => {
+      const added = [];
+      const missing = [];
+      const toAdd = [];
+      for (const item of toBuy) {
+        const q = itemKeyName(item);
+        try {
+          const data = await krogerCall({ action: 'search', query: q, locationId: store.locationId, accessToken: access });
+          if (data.product && data.product.upc) {
+            toAdd.push({ upc: data.product.upc, quantity: 1 });
+            added.push(data.product.description || item.display);
+          } else missing.push(item.display);
+        } catch (e) {
+          if (isKrogerExpired(e)) throw e;
+          missing.push(item.display);
+        }
+      }
+      if (toAdd.length) {
+        await krogerCall({ action: 'add', items: toAdd, accessToken: access });
+      }
+      return { added, missing };
+    };
+    try {
+      const res = await krogerWithAuth(runSend);
+      if (res === null) {
+        setKrogerStatus('error');
+        setKrogerResult({ added: [], missing: [], error: 'Your Kroger connection expired. Tap "Send to Kroger cart" again to reconnect.' });
+        return;
+      }
+      setKrogerStatus('done');
+      setKrogerResult({ added: res.added, missing: res.missing, error: null });
+    } catch (e) {
+      setKrogerStatus('error');
+      setKrogerResult({ added: [], missing: [], error: 'Could not send to Kroger. Check your connection and try again.' });
+    }
+  };
+
   const avgRating = (meal) => {
     const vals = Object.values(meal.ratings || {});
     if (!vals.length) return null;
@@ -2891,6 +3130,85 @@ Requirements:
                 >
                   Copy List
                 </button>
+                {krogerConfigured && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={sendToKroger}
+                      disabled={krogerStatus === 'sending'}
+                      className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {krogerStatus === 'sending'
+                        ? 'Sending to Kroger…'
+                        : krogerTokens
+                          ? '🛒 Send to Kroger cart'
+                          : '🛒 Connect Kroger + send cart'}
+                    </button>
+                    {krogerStore && !krogerShowPicker && (
+                      <p className="text-[11px] text-slate-400">
+                        Store: {krogerStore.name}
+                        {' · '}
+                        <button onClick={() => setKrogerShowPicker(true)} className="underline">change</button>
+                      </p>
+                    )}
+                    {krogerShowPicker && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-500">Pick your Kroger store — we remember it after this.</p>
+                        <div className="flex gap-2">
+                          <input
+                            value={krogerZip}
+                            onChange={(e) => setKrogerZip(e.target.value)}
+                            placeholder="ZIP code"
+                            inputMode="numeric"
+                            className="flex-1 border rounded-lg px-2 py-2 text-xs"
+                          />
+                          <button
+                            onClick={findKrogerStores}
+                            disabled={krogerStoreLoading}
+                            className="bg-slate-200 px-3 rounded-lg text-xs font-bold disabled:opacity-60"
+                          >
+                            {krogerStoreLoading ? '…' : 'Find stores'}
+                          </button>
+                        </div>
+                        {krogerStores && krogerStores.map((s) => (
+                          <button
+                            key={s.locationId}
+                            onClick={() => pickKrogerStore(s)}
+                            className="w-full text-left border rounded-lg px-2 py-2 text-xs hover:bg-emerald-50"
+                          >
+                            <span className="font-bold">{s.name}</span>
+                            <span className="block text-slate-500">{s.address}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {krogerResult && (
+                      <div className="text-xs space-y-1 border rounded-lg p-2 bg-slate-50">
+                        {krogerResult.error && (
+                          <p className="text-red-600 font-semibold">{krogerResult.error}</p>
+                        )}
+                        {!krogerResult.error && (
+                          <React.Fragment>
+                            <p className="font-bold text-emerald-700">
+                              Added {krogerResult.added.length} item{krogerResult.added.length === 1 ? '' : 's'} to your Kroger cart.
+                            </p>
+                            {krogerResult.added.map((n, i) => (
+                              <p key={i} className="text-slate-600">✓ {n}</p>
+                            ))}
+                            {krogerResult.missing.length > 0 && (
+                              <React.Fragment>
+                                <p className="font-bold text-slate-500 pt-1">Couldn't find at this store:</p>
+                                {krogerResult.missing.map((n, i) => (
+                                  <p key={i} className="text-slate-500">· {n}</p>
+                                ))}
+                              </React.Fragment>
+                            )}
+                            <p className="text-slate-400 pt-1">Checkout happens in the Kroger app — we can't check out for you.</p>
+                          </React.Fragment>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
