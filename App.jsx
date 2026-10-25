@@ -32,14 +32,14 @@ const slLogEvent = (event_type) => {
 const LEGAL_DOCS = {
   privacy: {
     title: 'Privacy Policy',
-    updated: 'October 18, 2026',
+    updated: 'October 25, 2026',
     sections: [
       { h: 'What we collect',
         p: 'Account info: your email address (used for sign-in).\nFamily profile: family name, weekly grocery budget, and the details you enter for each family member \u2014 name, age, role (parent/child), dietary preferences, allergies, and disliked foods.\nYour activity: meal plans you generate, save, and load, star ratings per family member, and basic usage events (e.g. plan generated) that help us understand whether the app is working. We also count anonymous site visits (page viewed, referrer, a random session id stored in your browser, and basic engagement signals like scrolling, time on page, and button clicks \u2014 no IP address is stored) to see whether our outreach is working.' },
       { h: 'How we use it',
         p: 'To generate your meal plans, personalize them to your family\u2019s tastes and budget, and improve the service. We do not sell your personal information. We do not show ads.' },
       { h: 'Who processes your data',
-        p: 'Supabase (database and authentication), Groq (AI meal generation \u2014 your dietary needs, allergies, ages, and budget are included in the prompts we send; never your email), and Vercel (app hosting). Each processes data only to provide the service.' },
+        p: 'Supabase (database and authentication), Groq (AI meal generation \u2014 your dietary needs, allergies, ages, and budget are included in the prompts we send; never your email), Vercel (app hosting), and Kroger (only when you use the Send to Kroger cart feature — your shopping list items and chosen store are sent to Kroger so they can be added to your cart; you sign in with your own Kroger account, and we never see or store your Kroger password or payment information). Each processes data only to provide the service.' },
       { h: "Children's privacy",
         p: 'SupperLine accounts are created and managed by a parent or guardian. Any information about children (such as age or dietary needs) is provided by the parent \u2014 we do not knowingly collect information directly from children under 13.' },
       { h: 'Your rights',
