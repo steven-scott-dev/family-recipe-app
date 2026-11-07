@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import StatsDashboard from './StatsDashboard';
 import RecipeImporter from './RecipeImporter';
 import { estimatePackagePrices } from './aiService';
+import { libraryPhotoFor } from './dishPhotos';
 
 // ---- anonymous analytics helpers (module scope) ----
 // sl_sid: random per-browser id in localStorage. Lets us stitch repeat visits
@@ -1860,6 +1861,26 @@ Each item in the array MUST strictly follow this JSON schema:
     }
   };
 
+  // ---- Meal-card photos: this family's own snapped photos, keyed by dish ----
+  const [familyPhotoByDish, setFamilyPhotoByDish] = useState({});
+  useEffect(() => {
+    if (!family?.id || !generatedMeals.length) { setFamilyPhotoByDish({}); return; }
+    const keys = [...new Set(generatedMeals.map((m) => dishKey(m.title)).filter(Boolean))];
+    if (!keys.length) return;
+    supabase
+      .from('meal_photos')
+      .select('dish_key, photo_url, created_at')
+      .eq('family_id', family.id)
+      .in('dish_key', keys)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const map = {};
+        data.forEach((r) => { if (!map[r.dish_key]) map[r.dish_key] = r.photo_url; });
+        setFamilyPhotoByDish(map);
+      });
+  }, [family?.id, generatedMeals]);
+
   // ---- Snap-your-dish: load photos for the open recipe's dish ----
   useEffect(() => {
     if (!selectedRecipe || !family?.id) { setDishPhotos([]); setActivePhotoIdx(0); return; }
@@ -2706,6 +2727,7 @@ Requirements:
                           const avg = avgRating(meal);
                           const flagged = allergyWarnings.some((w) => w.key === `${meal.day}|${meal.type}|${meal.title}`);
                           const moving = moveIdx === idx;
+                          const photo = familyPhotoByDish[dishKey(meal.title)] || libraryPhotoFor(meal.title);
                           return (
                           <div
                             key={idx}
@@ -2722,6 +2744,7 @@ Requirements:
                               >
                                 ⋮⋮
                               </span>
+                              {photo && <img src={photo} alt="" loading="lazy" className="w-[60px] h-[60px] rounded-md object-cover shrink-0" />}
                               <div className="min-w-0">
                                 <p className="font-bold text-slate-800">
                                   {flagged && <span className="text-red-500 mr-1">⚠️</span>}
