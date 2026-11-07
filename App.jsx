@@ -1632,7 +1632,7 @@ Each item in the array MUST strictly follow this JSON schema:
       onClick={() => setCheckedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
       className={`text-xs p-2 rounded-lg border cursor-pointer flex gap-2 items-start ${
         checkedItems[item.id] || owned
-          ? 'bg-emerald-50 border-emerald-200 text-slate-400 line-through'
+          ? 'bg-orange-50 border-orange-200 text-slate-400 line-through'
           : 'bg-slate-50 border-slate-200 text-slate-700'
       }`}
     >
@@ -1652,7 +1652,7 @@ Each item in the array MUST strictly follow this JSON schema:
       </span>
       <button
         onClick={(e) => { e.stopPropagation(); togglePantry(item); }}
-        className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${owned ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'}`}
+        className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${owned ? 'bg-slate-200 text-slate-600' : 'bg-orange-100 text-orange-700'}`}
       >
         {owned ? 'buy' : 'have it'}
       </button>
@@ -2089,7 +2089,7 @@ Requirements:
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-orange-50 flex items-center justify-center">
         <p className="text-slate-500 text-sm">Loading...</p>
       </div>
     );
@@ -2097,13 +2097,13 @@ Requirements:
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10">
-        <header className="bg-slate-900 text-white">
+      <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-10">
+        <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white">
           <div className="max-w-md mx-auto px-4 py-10 text-center">
             <h1 className="text-3xl font-bold tracking-tight">SupperLine</h1>
-            <p className="text-emerald-400 font-semibold mt-3 text-lg">Mealime is shutting down Oct 21.</p>
+            <p className="text-orange-400 font-semibold mt-3 text-lg">Mealime is shutting down Oct 21.</p>
             <p className="text-slate-300 mt-2 text-sm">SupperLine is the replacement. Free during launch.</p>
-            <a href="#signin" className="inline-block mt-5 bg-emerald-600 text-white font-bold text-sm px-6 py-3 rounded-lg">
+            <a href="#signin" className="inline-block mt-5 bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-lg">
               Start planning free
             </a>
           </div>
@@ -2151,7 +2151,7 @@ Requirements:
                 />
                 <button
                   type="submit"
-                  className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-bold"
+                  className="w-full bg-red-900 text-white py-2.5 rounded-lg text-sm font-bold"
                 >
                   Send sign-in link
                 </button>
@@ -2208,10 +2208,10 @@ Requirements:
   // (Placed after the sign-in gate above, so it requires login.)
   if (typeof window !== 'undefined' && window.location.hash === '#stats') {
     return (
-      <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20">
-        <header className="bg-slate-900 text-white p-4 shadow-md">
+      <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-20">
+        <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white p-4 shadow-md">
           <div className="max-w-md mx-auto">
-            <h1 className="text-xl font-bold tracking-wide">SupperLine <span className="text-emerald-400">· Stats</span></h1>
+            <h1 className="text-xl font-bold tracking-wide">SupperLine <span className="text-orange-400">· Stats</span></h1>
             <p className="text-xs text-slate-400 mt-0.5">Admin analytics — plans, retention, Stripe tripwire</p>
           </div>
         </header>
@@ -2256,17 +2256,17 @@ Requirements:
     const tomorrowISO = toISODate(new Date(Date.now() + 864e5));
     const label = selISO === todayISO ? 'Tonight' : selISO === tomorrowISO ? 'Tomorrow' : weekday;
     return (
-      <div className="bg-emerald-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
+      <div className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">{label} · {pick.type}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
           <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
-          <p className="text-xs text-emerald-100 mt-0.5">
+          <p className="text-xs text-orange-100 mt-0.5">
             {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
           </p>
         </div>
         <button
           onClick={() => setSelectedRecipe(pick)}
-          className="shrink-0 bg-white text-emerald-700 text-xs font-bold px-3 py-2 rounded-lg"
+          className="shrink-0 bg-white text-orange-700 text-xs font-bold px-3 py-2 rounded-lg"
         >
           View recipe
         </button>
@@ -2295,11 +2295,11 @@ Requirements:
               <button
                 key={iso}
                 onClick={() => setHomeDayISO(iso)}
-                className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-emerald-600 text-white border-emerald-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-emerald-400' : ''}`}
+                className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-orange-400' : ''}`}
               >
-                <span className={`text-[9px] ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{'SMTWTFS'[d.getDay()]}</span>
+                <span className={`text-[9px] ${selected ? 'text-orange-100' : 'text-slate-400'}`}>{'SMTWTFS'[d.getDay()]}</span>
                 <span>{d.getDate()}</span>
-                <span className={`w-1 h-1 rounded-full mt-0.5 ${hasMeals ? (selected ? 'bg-white' : 'bg-emerald-500') : 'bg-transparent'}`} />
+                <span className={`w-1 h-1 rounded-full mt-0.5 ${hasMeals ? (selected ? 'bg-white' : 'bg-orange-500') : 'bg-transparent'}`} />
               </button>
             );
           })}
@@ -2323,9 +2323,9 @@ Requirements:
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20">
+    <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-20">
       {/* Top Header */}
-      <header className="bg-slate-900 text-white p-4 shadow-md">
+      <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white p-4 shadow-md">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="text-center flex-1">
             <h1 className="text-xl font-bold tracking-wide">SupperLine</h1>
@@ -2353,7 +2353,7 @@ Requirements:
                 <p className="text-xs text-slate-500">Generate your week and dinner plans itself — tonight's meal shows up right here.</p>
                 <button
                   onClick={() => { navigate('meal_planning'); startNewWeek(); }}
-                  className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-emerald-700"
+                  className="w-full bg-orange-600 text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-orange-700"
                 >
                   ✨ Plan my week
                 </button>
@@ -2388,7 +2388,7 @@ Requirements:
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={startNewWeek}
-                    className="bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
+                    className="bg-orange-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-orange-700"
                   >
                     ＋ Plan next week
                   </button>
@@ -2402,7 +2402,7 @@ Requirements:
               ) : (
                 <button
                   onClick={startNewWeek}
-                  className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-emerald-700"
+                  className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-orange-700"
                 >
                   ＋ Plan a new week
                 </button>
@@ -2438,7 +2438,7 @@ Requirements:
                     <button
                       key={b.kind}
                       onClick={() => applyShortcut(b.kind)}
-                      className="text-xs font-bold py-1.5 rounded-lg border bg-slate-50 text-slate-600 border-slate-200 hover:border-emerald-400 transition"
+                      className="text-xs font-bold py-1.5 rounded-lg border bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-400 transition"
                     >
                       {b.label}
                     </button>
@@ -2461,7 +2461,7 @@ Requirements:
                       <button
                         key={d}
                         onClick={() => togglePlanDate(iso)}
-                        className={`py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-emerald-600 text-white border-emerald-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-emerald-400' : ''}`}
+                        className={`py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-orange-400' : ''}`}
                       >
                         {d}
                       </button>
@@ -2494,7 +2494,7 @@ Requirements:
                         {!isThisMonth && (
                           <button
                             onClick={() => setCalMonth({ y: now.getFullYear(), m: now.getMonth() })}
-                            className="text-[11px] font-bold text-emerald-600"
+                            className="text-[11px] font-bold text-orange-600"
                           >
                             Today
                           </button>
@@ -2513,7 +2513,7 @@ Requirements:
                           type="checkbox"
                           checked={selectedMeals.includes(meal)}
                           onChange={() => toggleMeal(meal)}
-                          className="w-4 h-4 accent-emerald-600"
+                          className="w-4 h-4 accent-orange-600"
                         />
                         {meal}
                       </label>
@@ -2522,7 +2522,7 @@ Requirements:
                 </div>
 
               {/* Quick wins: fridge input + plan style toggles */}
-              <div className="border rounded-lg p-2.5 bg-emerald-50/60 border-emerald-200 space-y-2">
+              <div className="border rounded-lg p-2.5 bg-orange-50/60 border-orange-200 space-y-2">
                 <div>
                   <label className="text-xs font-semibold text-slate-700">🧊 Already in your fridge/pantry?</label>
                   <textarea
@@ -2539,17 +2539,17 @@ Requirements:
                     type="checkbox"
                     checked={modularOn}
                     onChange={() => setModularNights(!modularOn)}
-                    className="w-4 h-4 accent-emerald-600"
+                    className="w-4 h-4 accent-orange-600"
                   />
                   🍱 Build-your-own nights
-                  {youngChild && <span className="text-[10px] text-emerald-700 font-semibold">(great for picky eaters)</span>}
+                  {youngChild && <span className="text-[10px] text-orange-700 font-semibold">(great for picky eaters)</span>}
                 </label>
                 <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={useUpNight}
                     onChange={() => setUseUpNight(!useUpNight)}
-                    className="w-4 h-4 accent-emerald-600"
+                    className="w-4 h-4 accent-orange-600"
                   />
                   ♻️ Use-it-up night
                   <span className="text-[10px] text-slate-500">(last night cooks the leftovers)</span>
@@ -2557,19 +2557,19 @@ Requirements:
               </div>
 
               {/* Calendar sync: life events that shape the plan */}
-              <div className="border rounded-lg p-2.5 bg-indigo-50/60 border-indigo-200">
+              <div className="border rounded-lg p-2.5 bg-red-50/60 border-red-200">
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700">📅 Calendar sync</label>
                   {!calConnected ? (
                     <button
                       onClick={connectCalendar}
                       disabled={calChecking}
-                      className="text-[11px] font-bold px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                      className="text-[11px] font-bold px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                     >
                       {calChecking ? 'Checking...' : 'Connect Google Calendar'}
                     </button>
                   ) : (
-                    <span className="text-[11px] font-bold text-indigo-700">✓ Connected</span>
+                    <span className="text-[11px] font-bold text-red-700">✓ Connected</span>
                   )}
                 </div>
                 <p className="text-[11px] text-slate-500 mb-1">Skips dinner-out nights, scales up for guests, keeps busy nights quick.</p>
@@ -2580,14 +2580,14 @@ Requirements:
                 {calEvents.length > 0 && (
                   <div className="space-y-1 mt-1">
                     {calEvents.map((e) => (
-                      <label key={e.id} className="flex items-center gap-2 text-[11px] bg-white border border-indigo-100 rounded px-2 py-1 cursor-pointer">
+                      <label key={e.id} className="flex items-center gap-2 text-[11px] bg-white border border-red-100 rounded px-2 py-1 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={e.enabled}
                           onChange={() => toggleCalEvent(e.id)}
-                          className="w-3.5 h-3.5 accent-indigo-600"
+                          className="w-3.5 h-3.5 accent-red-600"
                         />
-                        <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${e.kind === 'dinner-out' ? 'bg-amber-100 text-amber-800' : e.kind === 'guests' ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>
+                        <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${e.kind === 'dinner-out' ? 'bg-amber-100 text-amber-800' : e.kind === 'guests' ? 'bg-orange-100 text-orange-800' : 'bg-orange-100 text-orange-800'}`}>
                           {e.kind === 'dinner-out' ? 'Eating out' : e.kind === 'guests' ? 'Guests' : 'Busy night'}
                         </span>
                         <span className="text-slate-700 truncate">{e.weekday} {e.dateLabel} — {e.title}</span>
@@ -2613,7 +2613,7 @@ Requirements:
               <button 
                 onClick={generateAIMealPlan}
                 disabled={isGenerating}
-                className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}
               >
                 {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Make my meal plan'}
               </button>
@@ -2653,7 +2653,7 @@ Requirements:
                 <div className="flex justify-between items-center px-1">
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
                       Est. total: ${calculateTotalCost().toFixed(2)}
                     </span>
                     {(() => {
@@ -2662,7 +2662,7 @@ Requirements:
                       const total = calculateTotalCost();
                       const over = total > budget;
                       return (
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${over ? 'bg-red-100 text-red-700' : 'bg-sky-100 text-sky-700'}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${over ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {over
                             ? `Over budget by $${(total - budget).toFixed(2)}`
                             : `$${(budget - total).toFixed(2)} under budget`}
@@ -2671,14 +2671,14 @@ Requirements:
                     })()}
                     <button
                       onClick={openShopping}
-                      className="text-xs font-bold px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                      className="text-xs font-bold px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700"
                     >
                       🛒 List
                     </button>
                     <button
                       onClick={handleSavePlan}
                       disabled={isSaving}
-                      className={`text-xs font-bold px-3 py-1 rounded ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                      className={`text-xs font-bold px-3 py-1 rounded ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-orange-600 text-white hover:bg-orange-700'}`}
                     >
                       {isSaving ? 'Saving...' : '💾 Save Plan'}
                     </button>
@@ -2694,13 +2694,13 @@ Requirements:
                   const budget = Number(family.weekly_budget) || 0;
                   if (!budget || !generatedMeals.length) return null;
                   const pct = (calculateTotalCost() / budget) * 100;
-                  const barColor = pct > 100 ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-emerald-500';
+                  const barColor = pct > 100 ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-gradient-to-r from-emerald-500 to-lime-400';
                   return (
                     <div className="px-1">
-                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-3 bg-orange-100 rounded-full overflow-hidden shadow-inner">
                         <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5 text-right">
+                      <p className="text-[11px] font-semibold text-slate-500 mt-1 text-right">
                         {Math.round(pct)}% of ${budget}/week budget
                       </p>
                     </div>
@@ -2717,7 +2717,7 @@ Requirements:
                           onClick={() => { if (moveIdx !== null) moveMealToDay(moveIdx, day); }}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => { e.preventDefault(); const i = Number(e.dataTransfer.getData('text/plain')); if (!isNaN(i)) moveMealToDay(i, day); }}
-                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded ${moveIdx !== null ? 'bg-emerald-100 text-emerald-800 cursor-pointer hover:bg-emerald-200' : 'text-slate-500'}`}
+                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded ${moveIdx !== null ? 'bg-orange-100 text-orange-800 cursor-pointer hover:bg-orange-200' : 'text-slate-500'}`}
                         >
                           {day}{moveIdx !== null && ' — tap to move here'}
                         </div>
@@ -2732,7 +2732,7 @@ Requirements:
                           <div
                             key={idx}
                             onClick={() => setSelectedRecipe(meal)}
-                            className={`bg-white p-3 rounded-lg border text-xs flex justify-between items-center shadow-sm cursor-pointer transition ${moving ? 'border-emerald-500 ring-2 ring-emerald-300' : 'border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40'}`}
+                            className={`bg-white p-3 rounded-lg border text-xs flex justify-between items-center shadow-sm cursor-pointer transition ${moving ? 'border-orange-500 ring-2 ring-orange-300' : 'border-slate-200 hover:border-orange-500 hover:bg-orange-50/40'}`}
                           >
                             <div className="flex items-start gap-2 min-w-0">
                               <span
@@ -2740,7 +2740,7 @@ Requirements:
                                 onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(idx)); e.stopPropagation(); }}
                                 onClick={(e) => { e.stopPropagation(); setMoveIdx(moving ? null : idx); }}
                                 title="Drag or tap to move this meal to another day"
-                                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-emerald-600 text-base leading-none pt-0.5 select-none shrink-0"
+                                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-orange-600 text-base leading-none pt-0.5 select-none shrink-0"
                               >
                                 ⋮⋮
                               </span>
@@ -2782,7 +2782,7 @@ Requirements:
                         <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
                       </div>
                       <div className="flex gap-1.5">
-                        <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-emerald-700 hover:underline">Load</button>
+                        <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-orange-700 hover:underline">Load</button>
                         <button onClick={() => handleDeletePlan(plan.id)} className="font-bold text-red-600 hover:underline">Delete</button>
                       </div>
                     </div>
@@ -2817,7 +2817,7 @@ Requirements:
                   className="w-full border rounded p-2 text-sm bg-slate-50" 
                 />
               </div>
-              <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded font-semibold text-xs hover:bg-slate-900">
+              <button type="submit" className="w-full bg-red-800 text-white py-2 rounded font-semibold text-xs hover:bg-red-900">
                 Update Household Settings
               </button>
             </form>
@@ -2857,14 +2857,14 @@ Requirements:
                     <button
                       type="button"
                       onClick={() => setMemberRole('parent')}
-                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'parent' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'parent' ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
                     >
                       Parent
                     </button>
                     <button
                       type="button"
                       onClick={() => setMemberRole('child')}
-                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'child' ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'child' ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
                     >
                       Child
                     </button>
@@ -2880,7 +2880,7 @@ Requirements:
                       key={p}
                       type="button"
                       onClick={() => setMemberPortion(p)}
-                      className={`py-2 text-xs rounded font-bold border capitalize ${memberPortion === p ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`py-2 text-xs rounded font-bold border capitalize ${memberPortion === p ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
                     >
                       {p}
                     </button>
@@ -2895,14 +2895,14 @@ Requirements:
                   <button 
                     type="button"
                     onClick={() => setIsManaged(true)}
-                    className={`py-2 text-xs rounded font-bold border ${isManaged ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                    className={`py-2 text-xs rounded font-bold border ${isManaged ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
                   >
                     Add Directly (Child/Dependent)
                   </button>
                   <button 
                     type="button"
                     onClick={() => setIsManaged(false)}
-                    className={`py-2 text-xs rounded font-bold border ${!isManaged ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                    className={`py-2 text-xs rounded font-bold border ${!isManaged ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
                   >
                     Invite via Email
                   </button>
@@ -2930,7 +2930,7 @@ Requirements:
                       key={diet}
                       type="button"
                       onClick={() => toggleArrayItem(selectedDiet, setSelectedDiet, diet)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selectedDiet.includes(diet) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-300'}`}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selectedDiet.includes(diet) ? 'bg-orange-600 text-white border-orange-600' : 'bg-slate-50 text-slate-600 border-slate-300'}`}
                     >
                       {diet}
                     </button>
@@ -2967,7 +2967,7 @@ Requirements:
 
               <button 
                 type="submit" 
-                className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold text-sm shadow hover:bg-slate-800 transition"
+                className="w-full bg-red-900 text-white py-3 rounded-lg font-bold text-sm shadow hover:bg-red-800 transition"
               >
                 {editingMemberId ? 'Save Changes' : 'Save Member & Continue'}
               </button>
@@ -3002,7 +3002,7 @@ Requirements:
                         {member.role ? <span className="font-normal text-slate-500"> · {member.role}</span> : null}
                         {member.portion_size && member.portion_size !== 'standard' ? <span className="font-normal text-slate-500"> · {member.portion_size} portions</span> : null}
                       </h3>
-                      <span className={`text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded ${member.is_managed ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                      <span className={`text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded ${member.is_managed ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'}`}>
                         {member.is_managed ? 'Managed' : 'Account Member'}
                       </span>
                     </div>
@@ -3031,7 +3031,7 @@ Requirements:
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => handleEditMember(member)}
-                        className="flex-1 bg-slate-800 text-white py-1.5 rounded text-xs font-bold hover:bg-slate-900"
+                        className="flex-1 bg-red-800 text-white py-1.5 rounded text-xs font-bold hover:bg-red-900"
                       >
                         Edit
                       </button>
@@ -3054,7 +3054,7 @@ Requirements:
               <button
                 onClick={handleExportData}
                 disabled={isExporting}
-                className="w-full bg-emerald-600 text-white py-2 rounded text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
+                className="w-full bg-orange-600 text-white py-2 rounded text-sm font-bold hover:bg-orange-700 disabled:opacity-50"
               >
                 {isExporting ? 'Exporting…' : 'Export My Data (JSON)'}
               </button>
@@ -3102,7 +3102,7 @@ Requirements:
                 </p>
                 <button
                   onClick={generateList}
-                  className="w-full bg-sky-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-sky-700"
+                  className="w-full bg-orange-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-orange-700"
                 >
                   Generate Shopping List
                 </button>
@@ -3125,7 +3125,7 @@ Requirements:
                       </p>
                 {AISLE_ORDER.filter((aisle) => byAisle[aisle]).map((aisle) => (
                   <React.Fragment key={aisle}>
-                    <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider pt-1">
+                    <p className="text-[11px] font-bold text-orange-700 uppercase tracking-wider pt-1">
                       {aisle}
                     </p>
                     <ul className="space-y-1.5">
@@ -3170,7 +3170,7 @@ Requirements:
                 })()}
                 <button
                   onClick={copyShoppingList}
-                  className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
+                  className="w-full bg-red-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
                 >
                   Copy List
                 </button>
@@ -3179,7 +3179,7 @@ Requirements:
                     <button
                       onClick={sendToKroger}
                       disabled={krogerStatus === 'sending'}
-                      className="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-emerald-700 disabled:opacity-60"
+                      className="w-full bg-orange-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-orange-700 disabled:opacity-60"
                     >
                       {krogerStatus === 'sending'
                         ? 'Sending to Kroger…'
@@ -3217,7 +3217,7 @@ Requirements:
                           <button
                             key={s.locationId}
                             onClick={() => pickKrogerStore(s)}
-                            className="w-full text-left border rounded-lg px-2 py-2 text-xs hover:bg-emerald-50"
+                            className="w-full text-left border rounded-lg px-2 py-2 text-xs hover:bg-orange-50"
                           >
                             <span className="font-bold">{s.name}</span>
                             <span className="block text-slate-500">{s.address}</span>
@@ -3232,7 +3232,7 @@ Requirements:
                         )}
                         {!krogerResult.error && (
                           <React.Fragment>
-                            <p className="font-bold text-emerald-700">
+                            <p className="font-bold text-orange-700">
                               Added {krogerResult.added.length} item{krogerResult.added.length === 1 ? '' : 's'} to your Kroger cart.
                             </p>
                             {krogerResult.added.map((n, i) => (
@@ -3267,7 +3267,7 @@ Requirements:
               <div>
                 <h3 className="font-bold text-base text-slate-800">{selectedRecipe.title}</h3>
                 <div className="flex gap-2 text-xs font-semibold mt-1">
-                  <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
                     ⏱️ {selectedRecipe.prepTime || '15-20 mins'}
                   </span>
                   <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
@@ -3298,7 +3298,7 @@ Requirements:
                   {dishPhotos.length > 1 && (
                     <div className="flex gap-1.5 mt-1.5 overflow-x-auto">
                       {dishPhotos.map((p, i) => (
-                        <button key={p.id} onClick={() => setActivePhotoIdx(i)} className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 ${i === activePhotoIdx ? 'border-emerald-500' : 'border-transparent'}`}>
+                        <button key={p.id} onClick={() => setActivePhotoIdx(i)} className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 ${i === activePhotoIdx ? 'border-orange-500' : 'border-transparent'}`}>
                           <img src={p.photo_url} alt="" className="w-full h-full object-cover" />
                         </button>
                       ))}
@@ -3307,7 +3307,7 @@ Requirements:
                   <button
                     onClick={() => photoInputRef.current && photoInputRef.current.click()}
                     disabled={uploadingPhoto}
-                    className="mt-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 disabled:opacity-50"
+                    className="mt-1.5 text-xs font-bold text-orange-700 hover:text-orange-800 disabled:opacity-50"
                   >
                     {uploadingPhoto ? 'Uploading...' : '+ Add another photo'}
                   </button>
@@ -3316,7 +3316,7 @@ Requirements:
                 <button
                   onClick={() => photoInputRef.current && photoInputRef.current.click()}
                   disabled={uploadingPhoto}
-                  className="w-full h-28 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-sm font-semibold hover:border-emerald-400 hover:text-emerald-700 disabled:opacity-50"
+                  className="w-full h-28 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-sm font-semibold hover:border-orange-400 hover:text-orange-700 disabled:opacity-50"
                 >
                   {uploadingPhoto ? 'Uploading...' : 'Snap your dish'}
                 </button>
@@ -3404,7 +3404,7 @@ Requirements:
 
             <button 
               onClick={() => setSelectedRecipe(null)}
-              className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
+              className="w-full bg-red-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
             >
               Close Recipe
             </button>
@@ -3447,35 +3447,35 @@ Requirements:
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 text-xs font-bold z-40">
         <button 
           onClick={() => navigate('home')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'home' ? 'text-emerald-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'home' ? 'text-orange-600' : 'text-slate-500'}`}
         >
           <span>🏠</span>
           <span>Home</span>
         </button>
         <button 
           onClick={() => navigate('meal_planning')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'meal_planning' ? 'text-emerald-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'meal_planning' ? 'text-orange-600' : 'text-slate-500'}`}
         >
           <span>🥗</span>
           <span>Meals</span>
         </button>
         <button 
           onClick={() => navigate('recipes')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'recipes' ? 'text-emerald-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'recipes' ? 'text-orange-600' : 'text-slate-500'}`}
         >
           <span>📖</span>
           <span>Recipes</span>
         </button>
         <button 
           onClick={() => navigate('setup')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'setup' ? 'text-emerald-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'setup' ? 'text-orange-600' : 'text-slate-500'}`}
         >
           <span>⚙️</span>
           <span>Setup</span>
         </button>
         <button 
           onClick={() => navigate('family')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'family' ? 'text-emerald-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'family' ? 'text-orange-600' : 'text-slate-500'}`}
         >
           <span>👨‍👩‍👧</span>
           <span>Family</span>
