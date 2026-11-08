@@ -30,6 +30,25 @@ const slLogEvent = (event_type) => {
   } catch (e) {}
 };
 
+// The app's one motion moment: the budget bar sweeps in whenever a plan's
+// total changes. Everywhere else stays still. Respects reduced-motion.
+function BudgetBar({ pct, barColor }) {
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    setW(0);
+    const t = setTimeout(() => setW(Math.min(pct, 100)), 60);
+    return () => clearTimeout(t);
+  }, [pct]);
+  return (
+    <div className="h-3 bg-orange-100 rounded-full overflow-hidden shadow-inner">
+      <div
+        className={`h-full rounded-full ${barColor} motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out`}
+        style={{ width: `${w}%` }}
+      />
+    </div>
+  );
+}
+
 const LEGAL_DOCS = {
   privacy: {
     title: 'Privacy Policy',
@@ -145,6 +164,8 @@ export default function App() {
     return cleanup;
   }, []);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [cookMode, setCookMode] = useState(false); // cooking mode: full-screen step-by-step for the open recipe
+  const [cookStep, setCookStep] = useState(0);
   const [dishPhotos, setDishPhotos] = useState([]); // snap-your-dish photos for the open recipe
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -166,6 +187,16 @@ export default function App() {
   const [legalView, setLegalView] = useState(null);
   // Mirror state into refs for the popstate handler (declared after the states they read)
   useEffect(() => { selectedRecipeRef.current = selectedRecipe; }, [selectedRecipe]);
+  useEffect(() => { setCookMode(false); setCookStep(0); }, [selectedRecipe]);
+  // Keep the screen awake while cooking mode is open (best effort, guarded)
+  useEffect(() => {
+    if (!cookMode) return;
+    let lock = null;
+    try {
+      if (navigator.wakeLock) navigator.wakeLock.request('screen').then((l) => { lock = l; }).catch(() => {});
+    } catch (e) {}
+    return () => { try { if (lock) lock.release(); } catch (e) {} };
+  }, [cookMode]);
   useEffect(() => { showShoppingRef.current = showShopping; }, [showShopping]);
   useEffect(() => { legalViewRef.current = legalView; }, [legalView]);
 
@@ -2099,34 +2130,47 @@ Requirements:
     return (
       <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-10">
         <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white">
-          <div className="max-w-md mx-auto px-4 py-10 text-center">
-            <h1 className="text-3xl font-bold tracking-tight">SupperLine</h1>
-            <p className="text-orange-400 font-semibold mt-3 text-lg">Mealime is shutting down Oct 21.</p>
-            <p className="text-slate-300 mt-2 text-sm">SupperLine is the replacement. Free during launch.</p>
+          <div className="max-w-md mx-auto px-4 pt-10 pb-8 text-center">
+            <p className="text-orange-300 font-bold tracking-[0.25em] text-xs uppercase">SupperLine</p>
+            <h1 className="text-[42px] leading-[1.05] font-light tracking-tight mt-3">A week of dinners, <span className="font-semibold text-orange-400">under your budget.</span></h1>
+            <p className="text-slate-200 mt-4 text-sm leading-relaxed">Tell it who's eating and what you can spend. SupperLine plans the week, prices every dinner, and writes the grocery list.</p>
             <a href="#signin" className="inline-block mt-5 bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-lg">
               Start planning free
             </a>
+            <p className="text-slate-400 mt-3 text-xs">Free during launch · Built to replace Mealime, which shut down Oct 21</p>
+            <img src="/dish/chicken-veggie-stew.jpg" alt="A weeknight stew planned by SupperLine" className="mt-6 w-full h-44 object-cover rounded-xl border border-white/20" />
           </div>
         </header>
 
         <main className="max-w-md mx-auto px-4 py-6 space-y-4">
           <section className="bg-white rounded-xl p-5 shadow">
-            <h2 className="font-bold mb-3">Built for what Mealime never fixed</h2>
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li><span className="font-bold text-slate-800">Portions per person.</span> Small, standard, or large for each family member. Never locked to 2, 4, or 6 servings.</li>
-              <li><span className="font-bold text-slate-800">Your budget is the law.</span> Set your weekly grocery budget and the plan must come in under it.</li>
-              <li><span className="font-bold text-slate-800">A real calendar.</span> Month view with busy-night awareness and Google Calendar sync. Not a list.</li>
-              <li><span className="font-bold text-slate-800">One merged shopping list.</span> Duplicates combined and units rounded up. No 3.7 cans of beans.</li>
-            </ul>
+            <h2 className="font-bold mb-3">How it works</h2>
+            <ol className="space-y-3 text-sm text-slate-600">
+              <li className="flex gap-3"><span className="text-2xl font-light text-orange-600 leading-none">1</span><span><span className="font-bold text-slate-800">Tell it your family.</span> Who eats, likes, dislikes, allergies.</span></li>
+              <li className="flex gap-3"><span className="text-2xl font-light text-orange-600 leading-none">2</span><span><span className="font-bold text-slate-800">Set your weekly grocery budget.</span> That's a hard ceiling, not a suggestion.</span></li>
+              <li className="flex gap-3"><span className="text-2xl font-light text-orange-600 leading-none">3</span><span><span className="font-bold text-slate-800">Get the week.</span> Seven dinners, every one priced, plus one shopping list.</span></li>
+            </ol>
           </section>
 
           <section className="bg-white rounded-xl p-5 shadow">
-            <h2 className="font-bold mb-3">How it works</h2>
-            <ol className="space-y-2 text-sm text-slate-600 list-decimal list-inside">
-              <li>Tell it your family: who eats, likes, dislikes, allergies.</li>
-              <li>Set your weekly grocery budget.</li>
-              <li>Get a week of dinners plus one shopping list.</li>
-            </ol>
+            <h2 className="font-bold mb-3">Built for what Mealime never fixed</h2>
+            <ul className="space-y-3 text-sm text-slate-600">
+              <li><span className="font-bold text-orange-700 mr-1.5">01</span><span className="font-bold text-slate-800">Portions per person.</span> Small, standard, or large for each family member. Never locked to 2, 4, or 6 servings.</li>
+              <li><span className="font-bold text-orange-700 mr-1.5">02</span><span className="font-bold text-slate-800">Your budget is the law.</span> Set your weekly grocery budget and the plan must come in under it.</li>
+              <li><span className="font-bold text-orange-700 mr-1.5">03</span><span className="font-bold text-slate-800">A real calendar.</span> Month view with busy-night awareness and Google Calendar sync. Not a list.</li>
+              <li><span className="font-bold text-orange-700 mr-1.5">04</span><span className="font-bold text-slate-800">One merged shopping list.</span> Duplicates combined and units rounded up. No 3.7 cans of beans.</li>
+            </ul>
+          </section>
+
+          <section className="bg-red-950 rounded-xl p-5 shadow text-white">
+            <h2 className="font-bold mb-1">Proof, not promises</h2>
+            <p className="text-xs text-orange-300 font-semibold mb-3">One real week from a real SupperLine plan</p>
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-light tracking-tight">$26.90</span>
+              <span className="text-sm text-slate-300 pb-1">est. for 7 dinners</span>
+            </div>
+            <p className="text-sm text-slate-300 mt-2">That's <span className="font-bold text-emerald-400">$123.10 left over</span> from a $150 weekly budget — with dinners like chicken &amp; veggie stew ($5.00 est.) and turkey chili ($4.80 est.) on the plan.</p>
+            <p className="text-[11px] text-slate-400 mt-3">Your week prices to your budget and your family. The ceiling is the point.</p>
           </section>
 
           <section id="signin" className="bg-white rounded-xl p-6 shadow space-y-4">
@@ -2697,9 +2741,7 @@ Requirements:
                   const barColor = pct > 100 ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-gradient-to-r from-emerald-500 to-lime-400';
                   return (
                     <div className="px-1">
-                      <div className="h-3 bg-orange-100 rounded-full overflow-hidden shadow-inner">
-                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                      </div>
+                      <BudgetBar pct={pct} barColor={barColor} />
                       <p className="text-[11px] font-semibold text-slate-500 mt-1 text-right">
                         {Math.round(pct)}% of ${budget}/week budget
                       </p>
@@ -3286,6 +3328,15 @@ Requirements:
               </button>
             </div>
 
+            {selectedRecipe.instructions?.length > 0 && (
+              <button
+                onClick={() => { setCookStep(0); setCookMode(true); }}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg text-sm font-bold shadow"
+              >
+                🍳 Start cooking — step by step
+              </button>
+            )}
+
             {/* Snap-your-dish photo */}
             <div>
               {dishPhotos.length > 0 ? (
@@ -3411,6 +3462,68 @@ Requirements:
           </div>
         </div>
       )}
+
+      {/* COOKING MODE — full screen, one step at a time, everything else gone */}
+      {selectedRecipe && cookMode && (() => {
+        const steps = selectedRecipe.instructions || [];
+        const total = steps.length;
+        const done = total === 0 || cookStep >= total;
+        const idx = Math.min(cookStep, Math.max(total - 1, 0));
+        const photo = (dishPhotos.length > 0 ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url : null) || libraryPhotoFor(selectedRecipe.title);
+        return (
+          <div className="fixed inset-0 bg-orange-50 z-[60] flex flex-col">
+            <div className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white px-4 py-3 flex items-center justify-between gap-3">
+              <p className="font-bold text-sm truncate">{selectedRecipe.title}</p>
+              <button onClick={() => setCookMode(false)} className="shrink-0 text-xs font-bold bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-lg">✕ Exit</button>
+            </div>
+            {photo && <img src={photo} alt="" className="w-full h-36 object-cover" />}
+            <div className="px-5 pt-4 max-w-md w-full mx-auto flex-1 flex flex-col w-full">
+              {!done ? (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-wider text-orange-700">Step {idx + 1} of {total}</p>
+                  <div className="h-1.5 bg-orange-100 rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${((idx + 1) / total) * 100}%` }} />
+                  </div>
+                  <p className="text-[26px] leading-snug font-light text-slate-800 mt-6">{steps[idx]}</p>
+                  <details className="mt-auto mb-3 bg-white border border-orange-200 rounded-lg">
+                    <summary className="px-3 py-2.5 text-xs font-bold text-slate-600 cursor-pointer">Ingredients (peek)</summary>
+                    <ul className="list-disc list-inside text-xs text-slate-700 space-y-1 px-3 pb-3">
+                      {(selectedRecipe.ingredients || []).map((item, i) => (<li key={i} className="leading-snug">{item}</li>))}
+                    </ul>
+                  </details>
+                  <div className="flex gap-2 pb-6">
+                    <button
+                      onClick={() => setCookStep(Math.max(idx - 1, 0))}
+                      disabled={idx === 0}
+                      className={`flex-1 py-4 rounded-xl text-sm font-bold ${idx === 0 ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-300 text-slate-700'}`}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => setCookStep(idx + 1)}
+                      className="flex-[2] py-4 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-700 text-white shadow"
+                    >
+                      {idx === total - 1 ? 'Finish 🎉' : 'Next step →'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center pb-10">
+                  <p className="text-5xl mb-4">🎉</p>
+                  <p className="text-3xl font-light text-slate-800">That's dinner.</p>
+                  <p className="text-sm text-slate-500 mt-2">{selectedRecipe.title} — done, step by step.</p>
+                  <button
+                    onClick={() => { setCookMode(false); setSelectedRecipe(null); }}
+                    className="mt-6 bg-red-900 text-white px-8 py-3.5 rounded-xl text-sm font-bold shadow"
+                  >
+                    Back to my week
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <p className="text-center text-[11px] text-slate-400 pb-2">
         <button className="underline" onClick={() => setLegalView('privacy')}>Privacy Policy</button>
