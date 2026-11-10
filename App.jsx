@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import StatsDashboard from './StatsDashboard';
 import RecipeImporter from './RecipeImporter';
 import { estimatePackagePrices } from './aiService';
-import { libraryPhotoFor } from './dishPhotos';
+import { libraryPhotoFor, dishMatchKey } from './dishPhotos';
 
 // ---- anonymous analytics helpers (module scope) ----
 // sl_sid: random per-browser id in localStorage. Lets us stitch repeat visits
@@ -1912,6 +1912,39 @@ Each item in the array MUST strictly follow this JSON schema:
       });
   }, [family?.id, generatedMeals]);
 
+  // ---- Meal-card photos: shared dish-photo cache (dish_images table) ----
+  // Keyed by dishMatchKey (normalized title). Filled on demand by the
+  // dish-photo edge function — stock photo first, AI-generated fallback —
+  // then cached for every family. Bundled-library dishes skip the function.
+  const [cachePhotoByKey, setCachePhotoByKey] = useState({});
+  const dishPhotoAttemptedRef = useRef(new Set());
+  useEffect(() => {
+    if (!generatedMeals.length) return;
+    const titles = [...new Set(generatedMeals.map((m) => m.title).filter(Boolean))];
+    if (!titles.length) return;
+    const keys = titles.map((t) => dishMatchKey(t));
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from('dish_images').select('dish_key, image_url').in('dish_key', keys);
+      if (cancelled) return;
+      const found = {};
+      (data || []).forEach((r) => { found[r.dish_key] = r.image_url; });
+      if (Object.keys(found).length) setCachePhotoByKey((prev) => ({ ...prev, ...found }));
+      const missing = titles.filter((t) => {
+        const k = dishMatchKey(t);
+        return !found[k] && !libraryPhotoFor(t) && !dishPhotoAttemptedRef.current.has(k);
+      });
+      if (!missing.length) return;
+      missing.forEach((t) => dishPhotoAttemptedRef.current.add(dishMatchKey(t)));
+      const { data: fnData, error } = await supabase.functions.invoke('dish-photo', { body: { titles: missing } });
+      if (cancelled || error || !fnData?.photos) return;
+      const fresh = {};
+      Object.entries(fnData.photos).forEach(([k, url]) => { if (url) fresh[k] = url; });
+      if (Object.keys(fresh).length) setCachePhotoByKey((prev) => ({ ...prev, ...fresh }));
+    })();
+    return () => { cancelled = true; };
+  }, [generatedMeals]);
+
   // ---- Snap-your-dish: load photos for the open recipe's dish ----
   useEffect(() => {
     if (!selectedRecipe || !family?.id) { setDishPhotos([]); setActivePhotoIdx(0); return; }
@@ -2769,7 +2802,7 @@ Requirements:
                           const avg = avgRating(meal);
                           const flagged = allergyWarnings.some((w) => w.key === `${meal.day}|${meal.type}|${meal.title}`);
                           const moving = moveIdx === idx;
-                          const photo = familyPhotoByDish[dishKey(meal.title)] || libraryPhotoFor(meal.title);
+                          const photo = familyPhotoByDish[dishKey(meal.title)] || cachePhotoByKey[dishMatchKey(meal.title)] || libraryPhotoFor(meal.title);
                           return (
                           <div
                             key={idx}
@@ -3469,7 +3502,7 @@ Requirements:
         const total = steps.length;
         const done = total === 0 || cookStep >= total;
         const idx = Math.min(cookStep, Math.max(total - 1, 0));
-        const photo = (dishPhotos.length > 0 ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url : null) || libraryPhotoFor(selectedRecipe.title);
+        const photo = (dishPhotos.length > 0 ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url : null) || cachePhotoByKey[dishMatchKey(selectedRecipe.title)] || libraryPhotoFor(selectedRecipe.title);
         return (
           <div className="fixed inset-0 bg-orange-50 z-[60] flex flex-col">
             <div className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white px-4 py-3 flex items-center justify-between gap-3">
