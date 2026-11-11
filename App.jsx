@@ -3467,9 +3467,6 @@ Requirements:
                     : (familyPhotoByDish[dishKey(m.title)] || cachePhotoByKey[dishMatchKey(m.title)] || libraryPhotoFor(m.title));
                   return (
                     <div key={i} className={`w-full shrink-0 snap-center rounded-xl border overflow-hidden ${isSel ? 'border-orange-500 ring-2 ring-orange-300' : 'border-slate-200'}`}>
-                      {mPhoto
-                        ? <img src={mPhoto} alt={m.title} className="w-full h-44 object-cover" />
-                        : <div className="w-full h-44 bg-slate-100 flex items-center justify-center text-slate-400 text-sm font-semibold px-4 text-center">🍽️ {m.title}</div>}
                       <div className="p-3">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{m.day} {m.type}</p>
                         <h3 className="font-bold text-base text-slate-800 leading-snug">{m.title}</h3>
@@ -3486,6 +3483,9 @@ Requirements:
                           {m.price != null && <span className="font-semibold text-slate-600">${Number(m.price).toFixed(2)} <span className="font-normal text-slate-400">est.</span></span>}
                         </div>
                       </div>
+                      {mPhoto
+                        ? <img src={mPhoto} alt={m.title} className="w-full h-28 object-cover" />
+                        : <div className="w-full h-28 bg-slate-100 flex items-center justify-center text-slate-400 text-sm font-semibold px-4 text-center">🍽️ {m.title}</div>}
                     </div>
                   );
                 })}
