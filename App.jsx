@@ -1945,6 +1945,30 @@ Each item in the array MUST strictly follow this JSON schema:
     return () => { cancelled = true; };
   }, [generatedMeals]);
 
+  // ---- Recipe view: swipeable day strip (one merged card per plan meal) ----
+  // Same day order as the Weekly Schedule. Swiping the card strip switches
+  // the open recipe to that day; the strip scrolls itself to the open dish.
+  const planOrderMeals = (() => {
+    const days = [];
+    generatedMeals.forEach((m) => { if (m.day && !days.includes(m.day)) days.push(m.day); });
+    const ordered = [];
+    days.forEach((day) => generatedMeals.forEach((m) => { if (m.day === day) ordered.push(m); }));
+    return ordered;
+  })();
+  const sameMeal = (a, b) => !!a && !!b && a.day === b.day && a.type === b.type && a.title === b.title;
+  const recipeStripMeals = selectedRecipe
+    ? (planOrderMeals.some((m) => sameMeal(m, selectedRecipe)) ? planOrderMeals : [selectedRecipe])
+    : [];
+  const recipeStripIdx = Math.max(0, recipeStripMeals.findIndex((m) => sameMeal(m, selectedRecipe)));
+  const recipeStripRef = useRef(null);
+  useEffect(() => {
+    const el = recipeStripRef.current;
+    if (!el || !selectedRecipe) return;
+    if (Math.round(el.scrollLeft / el.clientWidth) !== recipeStripIdx) {
+      el.scrollTo({ left: recipeStripIdx * el.clientWidth, behavior: 'auto' });
+    }
+  }, [selectedRecipe, recipeStripIdx]);
+
   // ---- Snap-your-dish: load photos for the open recipe's dish ----
   useEffect(() => {
     if (!selectedRecipe || !family?.id) { setDishPhotos([]); setActivePhotoIdx(0); return; }
@@ -3338,27 +3362,68 @@ Requirements:
       {selectedRecipe && (
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-start border-b pb-2">
-              <div>
-                <h3 className="font-bold text-base text-slate-800">{selectedRecipe.title}</h3>
-                <div className="flex gap-2 text-xs font-semibold mt-1">
-                  <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
-                    ⏱️ {selectedRecipe.prepTime || '15-20 mins'}
-                  </span>
-                  <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
-                    🍽️
-                    <button onClick={() => adjustServings(-1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">−</button>
-                    <span>{selectedRecipe.servings || '2-4 servings'}</span>
-                    <button onClick={() => adjustServings(1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">+</button>
-                  </span>
-                </div>
-              </div>
-              <button 
+            {/* One merged card per day: dish photo + title + time/servings.
+                Swipe sideways to move through the week's days. */}
+            <div className="relative">
+              <button
                 onClick={() => setSelectedRecipe(null)}
-                className="text-slate-400 hover:text-slate-700 font-bold text-lg px-2"
+                className="absolute top-1.5 right-1.5 z-10 bg-white/85 text-slate-500 hover:text-slate-800 font-bold text-base w-8 h-8 rounded-full shadow"
               >
                 ✕
               </button>
+              <div
+                ref={recipeStripRef}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.clientWidth) return;
+                  const idx = Math.round(el.scrollLeft / el.clientWidth);
+                  const m = recipeStripMeals[idx];
+                  if (m && !sameMeal(m, selectedRecipe)) {
+                    setCookMode(false);
+                    setSelectedRecipe(m);
+                  }
+                }}
+                className="flex overflow-x-auto snap-x snap-mandatory"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {recipeStripMeals.map((m, i) => {
+                  const isSel = i === recipeStripIdx;
+                  const mPhoto = (isSel && dishPhotos.length > 0)
+                    ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url
+                    : (familyPhotoByDish[dishKey(m.title)] || cachePhotoByKey[dishMatchKey(m.title)] || libraryPhotoFor(m.title));
+                  return (
+                    <div key={i} className={`w-full shrink-0 snap-center rounded-xl border overflow-hidden ${isSel ? 'border-orange-500 ring-2 ring-orange-300' : 'border-slate-200'}`}>
+                      {mPhoto
+                        ? <img src={mPhoto} alt={m.title} className="w-full h-44 object-cover" />
+                        : <div className="w-full h-44 bg-slate-100 flex items-center justify-center text-slate-400 text-sm font-semibold px-4 text-center">🍽️ {m.title}</div>}
+                      <div className="p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{m.day} {m.type}</p>
+                        <h3 className="font-bold text-base text-slate-800 leading-snug">{m.title}</h3>
+                        <div className="flex gap-2 text-xs font-semibold mt-1.5 flex-wrap items-center">
+                          <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                            ⏱️ {m.prepTime || '15-20 mins'}
+                          </span>
+                          <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                            🍽️
+                            {isSel && <button onClick={() => adjustServings(-1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">−</button>}
+                            <span>{m.servings || '2-4 servings'}</span>
+                            {isSel && <button onClick={() => adjustServings(1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">+</button>}
+                          </span>
+                          {m.price != null && <span className="font-semibold text-slate-600">${Number(m.price).toFixed(2)} <span className="font-normal text-slate-400">est.</span></span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {recipeStripMeals.length > 1 && (
+                <div className="flex justify-center items-center gap-1 mt-2">
+                  {recipeStripMeals.map((_, i) => (
+                    <span key={i} className={`w-1.5 h-1.5 rounded-full ${i === recipeStripIdx ? 'bg-orange-500' : 'bg-slate-300'}`} />
+                  ))}
+                  <span className="text-[10px] text-slate-400 font-semibold ml-1.5">swipe for next day →</span>
+                </div>
+              )}
             </div>
 
             {selectedRecipe.instructions?.length > 0 && (
@@ -3370,17 +3435,14 @@ Requirements:
               </button>
             )}
 
-            {/* Snap-your-dish photo */}
+            {/* Snap-your-dish: the card above already shows a photo of the
+                dish; your own snapped photo replaces it. Thumbnails pick
+                which of your snaps the card shows. */}
             <div>
               {dishPhotos.length > 0 ? (
                 <>
-                  <img
-                    src={dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url}
-                    alt={selectedRecipe.title}
-                    className="w-full h-44 object-cover rounded-lg border border-slate-200"
-                  />
                   {dishPhotos.length > 1 && (
-                    <div className="flex gap-1.5 mt-1.5 overflow-x-auto">
+                    <div className="flex gap-1.5 overflow-x-auto">
                       {dishPhotos.map((p, i) => (
                         <button key={p.id} onClick={() => setActivePhotoIdx(i)} className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 ${i === activePhotoIdx ? 'border-orange-500' : 'border-transparent'}`}>
                           <img src={p.photo_url} alt="" className="w-full h-full object-cover" />
@@ -3400,9 +3462,9 @@ Requirements:
                 <button
                   onClick={() => photoInputRef.current && photoInputRef.current.click()}
                   disabled={uploadingPhoto}
-                  className="w-full h-28 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-sm font-semibold hover:border-orange-400 hover:text-orange-700 disabled:opacity-50"
+                  className="w-full py-2.5 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-xs font-semibold hover:border-orange-400 hover:text-orange-700 disabled:opacity-50"
                 >
-                  {uploadingPhoto ? 'Uploading...' : 'Snap your dish'}
+                  {uploadingPhoto ? 'Uploading...' : '📸 Snap your dish — your photo replaces the one above'}
                 </button>
               )}
               <input
