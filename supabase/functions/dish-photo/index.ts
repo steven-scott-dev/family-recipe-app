@@ -169,7 +169,7 @@ async function fromPexels(query: string): Promise<Found | null> {
   return null;
 }
 
-async function fromOpenverse(query: string): Promise<Found | null> {
+async function openverseSearch(query: string): Promise<Found | null> {
   const res = await fetchTimeout(
     `https://api.openverse.org/v1/images/?q=${encodeURIComponent(query)}&page_size=6&filter_dead=false`,
     { headers: { Accept: "application/json" } },
@@ -188,14 +188,30 @@ async function fromOpenverse(query: string): Promise<Found | null> {
   return null;
 }
 
+async function fromOpenverse(query: string): Promise<Found | null> {
+  const direct = await openverseSearch(query);
+  if (direct) return direct;
+  // Long AI-generated titles often match nothing — retry with the core words.
+  const words = query.split(" ").filter((w) => w.length > 2);
+  if (words.length > 3) {
+    return await openverseSearch(words.slice(-3).join(" "));
+  }
+  return null;
+}
+
 async function fromAI(title: string): Promise<Found | null> {
   const prompt =
     `Overhead photo of ${title}, a home-cooked weeknight dinner served on a plain plate, ` +
     `natural window light, realistic casual food photography, no text, no people`;
   const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=768&nologo=true`;
-  const img = await downloadImage(url);
-  if (!img) return null;
-  return { ...img, source: "ai", attribution: "AI-generated" };
+  // Pollinations rate-limits bursts and 503s intermittently — one retry
+  // after a pause rescues most transient failures.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
+    const img = await downloadImage(url).catch(() => null);
+    if (img) return { ...img, source: "ai", attribution: "AI-generated" };
+  }
+  return null;
 }
 
 async function resolveDish(key: string, title: string): Promise<string | null> {
@@ -222,15 +238,21 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Invalid JSON body" }, 400);
   }
   const byKey = new Map<string, string>();
-  for (const t of titles.slice(0, 14)) {
+  for (const t of titles.slice(0, 24)) {
     const key = dishMatchKey(t);
     if (key && !byKey.has(key)) byKey.set(key, t);
   }
   const photos: Record<string, string | null> = {};
-  await Promise.all(
-    [...byKey.entries()].map(async ([key, title]) => {
-      photos[key] = await resolveDish(key, title);
-    }),
-  );
+  // Small batches, not one big burst: the AI source rate-limits parallel
+  // calls, which is how whole plans ended up half-filled (2026-11-10).
+  const entries = [...byKey.entries()];
+  const BATCH = 3;
+  for (let i = 0; i < entries.length; i += BATCH) {
+    await Promise.all(
+      entries.slice(i, i + BATCH).map(async ([key, title]) => {
+        photos[key] = await resolveDish(key, title);
+      }),
+    );
+  }
   return json({ photos });
 });

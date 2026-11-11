@@ -1922,10 +1922,13 @@ Each item in the array MUST strictly follow this JSON schema:
     if (!generatedMeals.length) return;
     const titles = [...new Set(generatedMeals.map((m) => m.title).filter(Boolean))];
     if (!titles.length) return;
-    const keys = titles.map((t) => dishMatchKey(t));
+    // Archived weeks' dishes join the cache READ (Home shows them too) but
+    // only the current plan's dishes trigger fills.
+    const historyTitles = [...new Set((planHistory || []).flatMap((p) => (p.meals || []).map((m) => m.title)).filter(Boolean))];
+    const readKeys = [...new Set([...titles, ...historyTitles].map((t) => dishMatchKey(t)))];
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from('dish_images').select('dish_key, image_url').in('dish_key', keys);
+      const { data } = await supabase.from('dish_images').select('dish_key, image_url').in('dish_key', readKeys);
       if (cancelled) return;
       const found = {};
       (data || []).forEach((r) => { found[r.dish_key] = r.image_url; });
@@ -1936,14 +1939,29 @@ Each item in the array MUST strictly follow this JSON schema:
       });
       if (!missing.length) return;
       missing.forEach((t) => dishPhotoAttemptedRef.current.add(dishMatchKey(t)));
-      const { data: fnData, error } = await supabase.functions.invoke('dish-photo', { body: { titles: missing } });
-      if (cancelled || error || !fnData?.photos) return;
-      const fresh = {};
-      Object.entries(fnData.photos).forEach(([k, url]) => { if (url) fresh[k] = url; });
-      if (Object.keys(fresh).length) setCachePhotoByKey((prev) => ({ ...prev, ...fresh }));
+      // Fill in small batches so photos land progressively and no single
+      // call has to resolve a whole 19-meal plan at once. A dish that comes
+      // back null is un-marked, so the next run (plan change, tab switch)
+      // retries it instead of giving up for the whole session.
+      for (let i = 0; i < missing.length; i += 5) {
+        if (cancelled) return;
+        const batch = missing.slice(i, i + 5);
+        const { data: fnData, error } = await supabase.functions.invoke('dish-photo', { body: { titles: batch } });
+        if (cancelled) return;
+        if (error || !fnData?.photos) {
+          batch.forEach((t) => dishPhotoAttemptedRef.current.delete(dishMatchKey(t)));
+          continue;
+        }
+        const fresh = {};
+        Object.entries(fnData.photos).forEach(([k, url]) => {
+          if (url) fresh[k] = url;
+          else dishPhotoAttemptedRef.current.delete(k);
+        });
+        if (Object.keys(fresh).length) setCachePhotoByKey((prev) => ({ ...prev, ...fresh }));
+      }
     })();
     return () => { cancelled = true; };
-  }, [generatedMeals]);
+  }, [generatedMeals, activeTab]);
 
   // ---- Recipe view: swipeable day strip (one merged card per plan meal) ----
   // Same day order as the Weekly Schedule. Swiping the card strip switches
@@ -2356,9 +2374,11 @@ Requirements:
     const todayISO = toISODate(new Date());
     const tomorrowISO = toISODate(new Date(Date.now() + 864e5));
     const label = selISO === todayISO ? 'Tonight' : selISO === tomorrowISO ? 'Tomorrow' : weekday;
+    const pickPhoto = familyPhotoByDish[dishKey(pick.title)] || cachePhotoByKey[dishMatchKey(pick.title)] || libraryPhotoFor(pick.title);
     return (
       <div className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
-        <div className="min-w-0">
+        {pickPhoto && <img src={pickPhoto} alt="" className="w-[72px] h-[72px] rounded-lg object-cover shrink-0 border border-white/30" />}
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
           <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
           <p className="text-xs text-orange-100 mt-0.5">
@@ -2413,7 +2433,8 @@ Requirements:
                 onClick={() => setSelectedRecipe(m)}
                 className="w-full text-left text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 flex justify-between items-center gap-2"
               >
-                <span className="font-semibold text-slate-700 truncate">{m.type}: {m.title}</span>
+                {(() => { const p = familyPhotoByDish[dishKey(m.title)] || cachePhotoByKey[dishMatchKey(m.title)] || libraryPhotoFor(m.title); return p ? <img src={p} alt="" loading="lazy" className="w-[52px] h-[52px] rounded-md object-cover shrink-0" /> : null; })()}
+                <span className="font-semibold text-slate-700 truncate flex-1">{m.type}: {m.title}</span>
                 {m.price != null && <span className="shrink-0 text-slate-500">${Number(m.price).toFixed(2)}</span>}
               </button>
             ))}
