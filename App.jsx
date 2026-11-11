@@ -3434,10 +3434,10 @@ Requirements:
 
       {/* DETAILED RECIPE MODAL */}
       {selectedRecipe && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-sm w-full p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
-            {/* One merged card per day: dish photo + title + time/servings.
-                Swipe sideways to move through the week's days. */}
+        <div className="fixed inset-0 bg-slate-900/60 z-50">
+          <div className="bg-white w-full h-[100dvh] overflow-y-auto shadow-xl">
+            {/* One merged card per day, full-screen: info on top, smaller
+                photo under it. Swipe sideways to move through the week. */}
             <div className="relative">
               <button
                 onClick={() => setSelectedRecipe(null)}
@@ -3466,7 +3466,7 @@ Requirements:
                     ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url
                     : (familyPhotoByDish[dishKey(m.title)] || cachePhotoByKey[dishMatchKey(m.title)] || libraryPhotoFor(m.title));
                   return (
-                    <div key={i} className={`w-full shrink-0 snap-center rounded-xl border overflow-hidden ${isSel ? 'border-orange-500 ring-2 ring-orange-300' : 'border-slate-200'}`}>
+                    <div key={i} className={`w-full shrink-0 snap-center overflow-hidden border-b-2 ${isSel ? 'border-orange-500' : 'border-slate-200'}`}>
                       <div className="p-3">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{m.day} {m.type}</p>
                         <h3 className="font-bold text-base text-slate-800 leading-snug">{m.title}</h3>
@@ -3500,6 +3500,7 @@ Requirements:
               )}
             </div>
 
+            <div className="p-5 space-y-4">
             {selectedRecipe.instructions?.length > 0 && (
               <button
                 onClick={() => { setCookStep(0); setCookMode(true); }}
@@ -3628,6 +3629,7 @@ Requirements:
             >
               Close Recipe
             </button>
+            </div>
           </div>
         </div>
       )}
