@@ -1918,6 +1918,8 @@ Each item in the array MUST strictly follow this JSON schema:
   // then cached for every family. Bundled-library dishes skip the function.
   const [cachePhotoByKey, setCachePhotoByKey] = useState({});
   const dishPhotoAttemptedRef = useRef(new Set());
+  const heroStripRef = useRef(null);
+  const heroInitKeyRef = useRef(null);
   useEffect(() => {
     if (!generatedMeals.length) return;
     const titles = [...new Set(generatedMeals.map((m) => m.title).filter(Boolean))];
@@ -2341,9 +2343,7 @@ Requirements:
     );
   }
 
-  // Home hero: shows the selected day's featured meal (dinner-first). Tapping
-  // another day in the week strip swaps the hero to that day.
-  // All planned days across the working plan + archived past weeks
+  // Home hero helpers: planned days across the working plan + archived weeks
   const allPlanDates = () => {
     const set = new Set(loadedPlanDates || []);
     planHistory.forEach((p) => (p.dates || []).forEach((d) => set.add(d)));
@@ -2363,34 +2363,80 @@ Requirements:
     if (homeDayISO && sorted.includes(homeDayISO)) return homeDayISO;
     return sorted.includes(todayISO) ? todayISO : sorted[0];
   };
-  const renderDayHero = () => {
-    const selISO = homeSelISO();
-    if (!selISO) return null;
-    const selDate = parseISODate(selISO);
-    const weekday = selDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const dayMeals = mealsForDate(selISO).filter((m) => m.day === weekday);
-    const pick = dayMeals.find((m) => m.type === 'Dinner') || dayMeals[0];
-    if (!pick) return null;
+  // Home hero: swipeable day carousel — one card per planned day (dinner-first
+  // pick), same order as the week strip. Swiping selects that day (the week
+  // strip and meal rows below follow); tapping a day in the strip scrolls the
+  // carousel to it. Mirrors the recipe-view strip pattern.
+  const heroDaysList = () => {
     const todayISO = toISODate(new Date());
     const tomorrowISO = toISODate(new Date(Date.now() + 864e5));
-    const label = selISO === todayISO ? 'Tonight' : selISO === tomorrowISO ? 'Tomorrow' : weekday;
-    const pickPhoto = familyPhotoByDish[dishKey(pick.title)] || cachePhotoByKey[dishMatchKey(pick.title)] || libraryPhotoFor(pick.title);
+    return allPlanDates().map((iso) => {
+      const weekday = parseISODate(iso).toLocaleDateString('en-US', { weekday: 'long' });
+      const dayMeals = mealsForDate(iso).filter((m) => m.day === weekday);
+      const pick = dayMeals.find((m) => m.type === 'Dinner') || dayMeals[0];
+      if (!pick) return null;
+      const label = iso === todayISO ? 'Tonight' : iso === tomorrowISO ? 'Tomorrow' : weekday;
+      return { iso, weekday, pick, label };
+    }).filter(Boolean);
+  };
+  const renderDayHero = () => {
+    const heroDays = heroDaysList();
+    if (!heroDays.length) return null;
+    const selISO = homeSelISO();
+    const selIdx = Math.max(0, heroDays.findIndex((d) => d.iso === selISO));
+    const initKey = heroDays.map((d) => d.iso).join(',');
     return (
-      <div className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
-        {pickPhoto && <img src={pickPhoto} alt="" className="w-[72px] h-[72px] rounded-lg object-cover shrink-0 border border-white/30" />}
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
-          <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
-          <p className="text-xs text-orange-100 mt-0.5">
-            {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        <button
-          onClick={() => setSelectedRecipe(pick)}
-          className="shrink-0 bg-white text-orange-700 text-xs font-bold px-3 py-2 rounded-lg"
+      <div>
+        <div
+          ref={(el) => {
+            heroStripRef.current = el;
+            if (el && heroInitKeyRef.current !== initKey) {
+              heroInitKeyRef.current = initKey;
+              el.scrollLeft = selIdx * el.clientWidth;
+            }
+          }}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            if (!el.clientWidth) return;
+            const idx = Math.round(el.scrollLeft / el.clientWidth);
+            const d = heroDays[idx];
+            if (d && d.iso !== selISO) setHomeDayISO(d.iso);
+          }}
+          className="flex overflow-x-auto snap-x snap-mandatory"
+          style={{ scrollbarWidth: 'none' }}
         >
-          View recipe
-        </button>
+          {heroDays.map(({ iso, pick, label }) => {
+            const pickPhoto = familyPhotoByDish[dishKey(pick.title)] || cachePhotoByKey[dishMatchKey(pick.title)] || libraryPhotoFor(pick.title);
+            return (
+              <div key={iso} className="w-full shrink-0 snap-center">
+                <div className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
+                  {pickPhoto && <img src={pickPhoto} alt="" className="w-[72px] h-[72px] rounded-lg object-cover shrink-0 border border-white/30" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
+                    <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
+                    <p className="text-xs text-orange-100 mt-0.5">
+                      {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedRecipe(pick)}
+                    className="shrink-0 bg-white text-orange-700 text-xs font-bold px-3 py-2 rounded-lg"
+                  >
+                    View recipe
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {heroDays.length > 1 && (
+          <div className="flex justify-center items-center gap-1 mt-2">
+            {heroDays.map((d, i) => (
+              <span key={d.iso} className={`w-1.5 h-1.5 rounded-full ${i === selIdx ? 'bg-orange-500' : 'bg-slate-300'}`} />
+            ))}
+            <span className="text-[10px] text-slate-400 font-semibold ml-1.5">swipe for next day →</span>
+          </div>
+        )}
       </div>
     );
   };
@@ -2415,7 +2461,14 @@ Requirements:
             return (
               <button
                 key={iso}
-                onClick={() => setHomeDayISO(iso)}
+                onClick={() => {
+                  setHomeDayISO(iso);
+                  const el = heroStripRef.current;
+                  if (el) {
+                    const idx = heroDaysList().findIndex((d) => d.iso === iso);
+                    if (idx >= 0) el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
+                  }
+                }}
                 className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-orange-400' : ''}`}
               >
                 <span className={`text-[9px] ${selected ? 'text-orange-100' : 'text-slate-400'}`}>{'SMTWTFS'[d.getDay()]}</span>
