@@ -1920,6 +1920,7 @@ Each item in the array MUST strictly follow this JSON schema:
   const dishPhotoAttemptedRef = useRef(new Set());
   const heroStripRef = useRef(null);
   const heroInitKeyRef = useRef(null);
+  const heroProgRef = useRef(null);
   useEffect(() => {
     if (!generatedMeals.length) return;
     const titles = [...new Set(generatedMeals.map((m) => m.title).filter(Boolean))];
@@ -2363,10 +2364,11 @@ Requirements:
     if (homeDayISO && sorted.includes(homeDayISO)) return homeDayISO;
     return sorted.includes(todayISO) ? todayISO : sorted[0];
   };
-  // Home hero: swipeable day carousel — one card per planned day (dinner-first
-  // pick), same order as the week strip. Swiping selects that day (the week
-  // strip and meal rows below follow); tapping a day in the strip scrolls the
-  // carousel to it. Mirrors the recipe-view strip pattern.
+  // Home hero: full-screen swipeable day carousel — one tall photo card per
+  // planned day (dinner-first pick) filling the phone's content area, same
+  // order as the week strip. Swiping selects that day (the week strip and
+  // meal rows below follow); tapping a day in the strip scrolls the carousel
+  // to it. Mirrors the recipe-view strip pattern.
   const heroDaysList = () => {
     const todayISO = toISODate(new Date());
     const tomorrowISO = toISODate(new Date(Date.now() + 864e5));
@@ -2400,30 +2402,40 @@ Requirements:
             if (!el.clientWidth) return;
             const idx = Math.round(el.scrollLeft / el.clientWidth);
             const d = heroDays[idx];
-            if (d && d.iso !== selISO) setHomeDayISO(d.iso);
+            if (!d) return;
+            // While a week-strip tap is animating the carousel to its day,
+            // intermediate slides don't get to change the selected day.
+            if (heroProgRef.current) {
+              if (d.iso === heroProgRef.current) heroProgRef.current = null;
+              else return;
+            }
+            if (d.iso !== selISO) setHomeDayISO(d.iso);
           }}
-          className="flex overflow-x-auto snap-x snap-mandatory"
+          className="flex overflow-x-auto snap-x snap-mandatory h-[calc(100dvh-200px)] min-h-[400px]"
           style={{ scrollbarWidth: 'none' }}
         >
           {heroDays.map(({ iso, pick, label }) => {
             const pickPhoto = familyPhotoByDish[dishKey(pick.title)] || cachePhotoByKey[dishMatchKey(pick.title)] || libraryPhotoFor(pick.title);
             return (
-              <div key={iso} className="w-full shrink-0 snap-center">
-                <div className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-4 shadow flex items-center justify-between gap-3">
-                  {pickPhoto && <img src={pickPhoto} alt="" className="w-[72px] h-[72px] rounded-lg object-cover shrink-0 border border-white/30" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
-                    <p className="font-bold text-base leading-snug truncate">{pick.title}</p>
-                    <p className="text-xs text-orange-100 mt-0.5">
+              <div key={iso} className="w-full shrink-0 snap-center h-full">
+                <div className="relative w-full h-full rounded-xl overflow-hidden shadow bg-gradient-to-br from-orange-600 to-red-700 text-white">
+                  {pickPhoto
+                    ? <img src={pickPhoto} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    : <div className="absolute inset-0 flex items-center justify-center text-8xl opacity-40">🍽️</div>}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/30" />
+                  <p className="absolute top-0 inset-x-0 p-4 text-xs font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
+                  <div className="absolute bottom-0 inset-x-0 p-4">
+                    <p className="font-bold text-2xl leading-snug">{pick.title}</p>
+                    <p className="text-sm text-orange-100 mt-1">
                       {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
                     </p>
+                    <button
+                      onClick={() => setSelectedRecipe(pick)}
+                      className="mt-3 w-full bg-white text-orange-700 text-sm font-bold px-3 py-2.5 rounded-lg"
+                    >
+                      View recipe
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setSelectedRecipe(pick)}
-                    className="shrink-0 bg-white text-orange-700 text-xs font-bold px-3 py-2 rounded-lg"
-                  >
-                    View recipe
-                  </button>
                 </div>
               </div>
             );
@@ -2466,7 +2478,10 @@ Requirements:
                   const el = heroStripRef.current;
                   if (el) {
                     const idx = heroDaysList().findIndex((d) => d.iso === iso);
-                    if (idx >= 0) el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
+                    if (idx >= 0) {
+                      heroProgRef.current = iso;
+                      el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
+                    }
                   }
                 }}
                 className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-orange-400' : ''}`}
