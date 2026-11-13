@@ -177,6 +177,7 @@ export default function App() {
   const [authSent, setAuthSent] = useState(false);
   const [showShopping, setShowShopping] = useState(false);
   const [generatorOpen, setGeneratorOpen] = useState(false); // generator collapsible on Meals tab
+  const [tgSidesOnly, setTgSidesOnly] = useState(false); // Thanksgiving preset: sides-only, skip the bird
   const [homeDayISO, setHomeDayISO] = useState(null); // selected day in Home week strip
   const [shoppingList, setShoppingList] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
@@ -385,6 +386,26 @@ export default function App() {
   const parseISODate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const rangeISOs = (start, n) => Array.from({ length: n }, (_, i) => toISODate(addDays(start, i)));
+
+  // Holiday seasons: Thanksgiving = 4th Thursday of November (Nov 1–26);
+  // Christmas = Nov 27–Dec 25. Drives the seasonal landing line, the Home
+  // card, and the Thanksgiving preset. Null outside the holidays.
+  const thanksgivingDate = (y) => {
+    const d = new Date(y, 10, 1);
+    const off = (4 - d.getDay() + 7) % 7; // first Thursday of November
+    return new Date(y, 10, 1 + off + 21); // fourth Thursday
+  };
+  const holidaySeason = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const today = new Date(y, now.getMonth(), now.getDate());
+    const daysUntil = (d) => Math.round((d - today) / 864e5);
+    const tg = thanksgivingDate(y);
+    if (now.getMonth() === 10 && today <= tg) return { key: 'thanksgiving', daysAway: daysUntil(tg), date: tg, iso: toISODate(tg) };
+    const xm = new Date(y, 11, 25);
+    if ((now.getMonth() === 10 && today > tg) || (now.getMonth() === 11 && today <= xm)) return { key: 'christmas', daysAway: daysUntil(xm), date: xm, iso: toISODate(xm) };
+    return null;
+  };
 
   // ---- plan date picker (simple month calendar: tap days to include them) ----
   const [selectedDateISOs, setSelectedDateISOs] = useState(() => rangeISOs(new Date(), 7));
@@ -1317,6 +1338,117 @@ Each item in the array MUST strictly follow this JSON schema:
     }
   };
 
+  // Thanksgiving preset: one AI call plans a single Thanksgiving dinner
+  // (Thursday, 4th Thursday of November) for the family, anchored on the
+  // verified Kroger-ad menu ($25.82 for three). Sides-only swaps the bird
+  // for the five top sides. Result becomes the working plan for that one day;
+  // the current week is archived first (still visible on Home).
+  const generateThanksgivingPlan = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setAllergyWarnings([]);
+    setDuplicateNotes([]);
+    try {
+      const season = holidaySeason();
+      const tg = (season && season.key === 'thanksgiving') ? season.date : thanksgivingDate(new Date().getFullYear());
+      const tgISO = toISODate(tg);
+      const tgLabel = tg.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      const familySize = members.length || 1;
+      const budget = Number(family.weekly_budget) || 150;
+      const tgBudget = Math.max(60, familySize * 10);
+      const allDiets = Array.from(new Set(members.flatMap(m => m.dietary_preferences || [])));
+      const allAllergies = Array.from(new Set(members.flatMap(m => m.allergies || [])));
+      const allDislikes = Array.from(new Set(members.flatMap(m => m.dislikes || [])));
+      const memberDesc = members.map((m) => {
+        const bits = [m.name || 'Member'];
+        if (m.role) bits.push(m.role);
+        if (m.age) bits.push(`age ${m.age}`);
+        if (m.portion_size && m.portion_size !== 'standard') bits.push(`${m.portion_size} portions`);
+        return bits.join(', ');
+      }).join('; ') || 'not specified';
+      const menu = tgSidesOnly
+        ? `SIDES-ONLY (no turkey, no meat): plan these five sides as the whole dinner — green bean casserole, macaroni and cheese, yams/sweet potatoes, mashed potatoes, stuffing/dressing. Price each side for ${familySize} servings.`
+        : `MENU (use this exact dinner): roast turkey (12 lb Kroger turkey, $5.76 with the digital coupon — scale the bird to ${familySize} people), stuffing, turkey gravy, cranberry sauce, butter, biscuits, yams/sweet potatoes, pumpkin pie. A full dinner for 3 prices to $25.82 from this week's Kroger ad — keep the per-person cost near $8.61 and match these prices closely.`;
+      const prompt = `You are a professional nutritionist and meal planning assistant. Plan ONE Thanksgiving dinner for a family.
+
+Family Profile:
+- Total Family Members: ${familySize}
+- Members: ${memberDesc}
+- Required Diets: ${allDiets.length ? allDiets.join(', ') : 'None'}
+- CRITICAL ALLERGIES TO STRICTLY AVOID: ${allAllergies.length ? allAllergies.join(', ') : 'None'}
+- Disliked Foods to Exclude: ${allDislikes.length ? allDislikes.join(', ') : 'None'}
+- Dinner date: ${tgLabel} — set "day" to "Thursday" and "displayTitle" to "Thursday Dinner: Thanksgiving Dinner".
+
+${menu}
+
+RULES:
+- Return a JSON array with exactly ONE meal object.
+- Estimate the price field using realistic 2026 Knoxville, TN supermarket prices for ${familySize} servings. Total must stay under $${tgBudget}.
+- Every ingredient MUST include exact quantities and units (e.g. "12 lb whole turkey", "2 cups stuffing mix").
+- Include per-serving nutrition estimates in the nutrition object.
+- Set "servings" to exactly ${familySize}.
+- Do not include markdown code block backticks.
+Each item MUST follow this JSON schema:
+[
+  {
+    "day": "Thursday",
+    "type": "Dinner",
+    "title": "Thanksgiving Dinner",
+    "displayTitle": "Thursday Dinner: Thanksgiving Dinner",
+    "price": 25.82,
+    "prepTime": "3 hours",
+    "servings": "3 servings",
+    "nutrition": { "calories": 850, "protein": "45g", "carbs": "70g", "fat": "35g", "fiber": "6g", "sodium": "900mg" },
+    "ingredients": ["12 lb whole turkey", "2 cups stuffing mix"],
+    "instructions": ["Step 1 instruction..."]
+  }
+]`;
+      const parseLenient = (text) => {
+        const t = String(text || '').trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+        try { return JSON.parse(t); } catch (e) {
+          const start = t.search(/[[{]/);
+          const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+          if (start !== -1 && end > start) return JSON.parse(t.slice(start, end + 1));
+          throw e;
+        }
+      };
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('generate-meals', {
+        body: { prompt },
+      });
+      if (fnError) throw new Error(fnError.message);
+      if (fnData && fnData.error) throw new Error(fnData.error);
+      const parsed = parseLenient(fnData.content);
+      const arr = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? Object.values(parsed).find((v) => Array.isArray(v)) : null);
+      if (!arr || !arr.length) throw new Error('AI returned no Thanksgiving dinner');
+      const meal = {
+        ...arr[0],
+        day: 'Thursday',
+        type: 'Dinner',
+        title: tgSidesOnly ? 'Thanksgiving Sides Dinner' : 'Thanksgiving Dinner',
+        displayTitle: tgSidesOnly ? 'Thursday Dinner: Thanksgiving Sides Dinner' : 'Thursday Dinner: Thanksgiving Dinner',
+        servings: `${familySize} servings`,
+        baseServings: familySize,
+        baseIngredients: arr[0].ingredients || [],
+      };
+      archiveWorkingPlan([tgISO]);
+      setGeneratedMeals([meal]);
+      setLoadedPlanDates([tgISO]);
+      setAllergyWarnings(scanAllergies([meal], allAllergies));
+      logEvent('plan_generated', {
+        meals: 1,
+        total_cost: Number(Number(meal.price || 0).toFixed(2)),
+        holiday: 'thanksgiving',
+        sides_only: tgSidesOnly,
+      });
+      setGeneratorOpen(false);
+    } catch (err) {
+      console.error('Thanksgiving plan error:', err);
+      alert('Failed to plan Thanksgiving dinner: ' + err.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const parseServings = (s) => {
     if (typeof s === 'number') return s;
     const m = String(s || '').match(/(\d*\.?\d+)/);
@@ -2212,6 +2344,13 @@ Requirements:
             <p className="text-orange-300 font-bold tracking-[0.25em] text-xs uppercase">SupperLine</p>
             <h1 className="text-[42px] leading-[1.05] font-light tracking-tight mt-3">A week of dinners, <span className="font-semibold text-orange-400">under your budget.</span></h1>
             <p className="text-slate-200 mt-4 text-sm leading-relaxed">Tell it who's eating and what you can spend. SupperLine plans the week, prices every dinner, and writes the grocery list.</p>
+            {(() => { const s = holidaySeason(); if (!s) return null; return (
+              <p className="text-orange-300 mt-3 text-sm font-semibold">
+                {s.key === 'thanksgiving'
+                  ? `🦃 Thanksgiving ${s.daysAway === 0 ? 'is today' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`} — the whole dinner for three, $25.82 from this week's Kroger ad.`
+                  : `🎄 Christmas ${s.daysAway === 0 ? 'is today' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`} — plan the holiday table under your budget.`}
+              </p>
+            ); })()}
             <a href="#signin" className="inline-block mt-5 bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-lg">
               Start planning free
             </a>
@@ -2536,6 +2675,36 @@ Requirements:
         {/* TAB 1: MEAL PLANNING */}
         {activeTab === 'home' && (
           <div className="space-y-4">
+            {(() => {
+              const s = holidaySeason();
+              if (!s) return null;
+              const planned = allPlanDates().includes(s.iso);
+              return (
+                <div className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white p-4 rounded-xl shadow">
+                  {s.key === 'thanksgiving' ? (
+                    <>
+                      <p className="font-bold text-sm">🦃 Thanksgiving {s.daysAway === 0 ? 'is today!' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`}</p>
+                      <p className="text-xs text-orange-200 mt-1">Turkey, stuffing, gravy, cranberry, biscuits, yams, pie — $25.82 for three, from this week's Kroger ad.</p>
+                      {planned ? (
+                        <p className="text-xs font-bold text-emerald-300 mt-2">✓ Thanksgiving dinner is on your plan — find Nov 26 on Home.</p>
+                      ) : (
+                        <button onClick={() => { navigate('meal_planning'); setGeneratorOpen(true); }} className="mt-2 w-full bg-orange-600 text-white py-2 rounded-lg font-bold text-sm shadow hover:bg-orange-500">
+                          Plan Thanksgiving dinner
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-bold text-sm">🎄 Christmas {s.daysAway === 0 ? 'is today!' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`}</p>
+                      <p className="text-xs text-orange-200 mt-1">Plan the holiday table under your budget — same rules, bigger table.</p>
+                      <button onClick={() => { navigate('meal_planning'); setGeneratorOpen(true); }} className="mt-2 w-full bg-orange-600 text-white py-2 rounded-lg font-bold text-sm shadow hover:bg-orange-500">
+                        Plan a holiday week
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
             {(allPlanDates().length === 0) ? (
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center space-y-3">
                 <p className="text-4xl">🍽️</p>
@@ -2616,6 +2785,30 @@ Requirements:
                 </div>
               </div>
               
+              {(() => { const s = holidaySeason(); if (!s || s.key !== 'thanksgiving') return null; return (
+                <div className="border rounded-lg p-3 bg-amber-50 border-amber-300 space-y-2">
+                  <p className="text-sm font-bold text-slate-800">🦃 Thanksgiving dinner — one tap</p>
+                  <p className="text-xs text-slate-600">Turkey, stuffing, gravy, cranberry sauce, biscuits, yams, pie. Priced from this week's Kroger ad: $25.82 for three. Scales to your family size.</p>
+                  <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tgSidesOnly}
+                      onChange={() => setTgSidesOnly(!tgSidesOnly)}
+                      className="w-4 h-4 accent-orange-600"
+                    />
+                    Just the sides — skip the bird
+                    <span className="text-[10px] text-slate-500">(green bean casserole, mac &amp; cheese, yams, mashed potatoes, stuffing)</span>
+                  </label>
+                  <button
+                    onClick={generateThanksgivingPlan}
+                    disabled={isGenerating}
+                    className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-800 hover:bg-red-900'}`}
+                  >
+                    {isGenerating ? '🤖 Planning Thanksgiving...' : '🦃 Plan Thanksgiving dinner'}
+                  </button>
+                  <p className="text-[11px] text-slate-500">Your current week is kept in history — it stays visible on Home.</p>
+                </div>
+              ); })()}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Plan Dates</label>
                 <div className="grid grid-cols-4 gap-1.5 mb-2">
