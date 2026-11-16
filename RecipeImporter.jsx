@@ -184,7 +184,7 @@ export default function RecipeImporter({ supabase, userId }) {
         <button
           onClick={handleImport}
           disabled={busy || !pasteUrls.trim()}
-          className="mt-2 w-full bg-emerald-600 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg"
+          className="mt-2 w-full bg-[#5F7D5E] disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-lg"
         >
           {busy ? 'Importing…' : 'Import my recipes'}
         </button>
@@ -244,7 +244,7 @@ export default function RecipeImporter({ supabase, userId }) {
 
       {viewing ? (
         <div className="bg-white rounded-xl p-5 shadow space-y-4">
-          <button onClick={() => setViewing(null)} className="text-sm font-bold text-emerald-700">
+          <button onClick={() => setViewing(null)} className="text-sm font-bold text-[#3E5A3F]">
             ← Back to recipes
           </button>
           {viewing.image_url && (
@@ -328,12 +328,12 @@ export default function RecipeImporter({ supabase, userId }) {
                 <div key={r.url} className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2">
                   <p className="flex-1 min-w-0 text-sm text-slate-700 truncate">{r.title}</p>
                   {savedIds.has(r.url) ? (
-                    <span className="text-xs font-bold text-emerald-700 shrink-0">✓ Saved</span>
+                    <span className="text-xs font-bold text-[#3E5A3F] shrink-0">✓ Saved</span>
                   ) : (
                     <button
                       onClick={() => importCatalogRecipe(r.url)}
                       disabled={busy}
-                      className="shrink-0 text-xs font-bold bg-emerald-600 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg"
+                      className="shrink-0 text-xs font-bold bg-[#5F7D5E] disabled:opacity-50 text-white px-3 py-1.5 rounded-lg"
                     >
                       Import
                     </button>

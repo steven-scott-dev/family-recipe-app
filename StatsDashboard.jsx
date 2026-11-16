@@ -164,7 +164,7 @@ export default function StatsDashboard() {
         <p className="text-xs text-slate-500">Live from Supabase · updates on every visit</p>
         <button
           onClick={load}
-          className="text-xs font-bold text-emerald-700 border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-1.5"
+          className="text-xs font-bold text-[#3E5A3F] border border-[#5F7D5E] bg-[#E4EBDD] rounded-lg px-3 py-1.5"
         >
           Refresh
         </button>
@@ -187,13 +187,13 @@ export default function StatsDashboard() {
       </div>
 
       {/* THE tripwire */}
-      <div className={`rounded-xl border p-4 shadow-sm ${tripwireHit ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200'}`}>
+      <div className={`rounded-xl border p-4 shadow-sm ${tripwireHit ? 'bg-[#E4EBDD] border-[#5F7D5E]' : 'bg-white border-slate-200'}`}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-extrabold text-slate-800">Week-2 retention</h2>
           <span className="text-[11px] font-bold text-slate-400">Stripe tripwire: {TRIPWIRE_PCT}%</span>
         </div>
         <div className="flex items-end gap-2 mt-2">
-          <span className={`text-4xl font-extrabold ${tripwireHit ? 'text-emerald-700' : 'text-slate-900'}`}>
+          <span className={`text-4xl font-extrabold ${tripwireHit ? 'text-[#3E5A3F]' : 'text-slate-900'}`}>
             {overallRetention.toFixed(1)}%
           </span>
           <span className="text-xs text-slate-500 pb-1.5">
@@ -202,7 +202,7 @@ export default function StatsDashboard() {
         </div>
         <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden mt-2 relative">
           <div
-            className={`h-full rounded-full ${tripwireHit ? 'bg-emerald-500' : 'bg-amber-500'}`}
+            className={`h-full rounded-full ${tripwireHit ? 'bg-[#5F7D5E]' : 'bg-amber-500'}`}
             style={{ width: `${Math.min(overallRetention, 100)}%` }}
           />
           <div
@@ -282,7 +282,7 @@ export default function StatsDashboard() {
               <div key={w.week} className="flex-1 flex flex-col items-center justify-end h-full">
                 <span className="text-[10px] font-bold text-slate-600">{w.plans}</span>
                 <div
-                  className="w-full bg-emerald-500 rounded-t-md min-h-[4px]"
+                  className="w-full bg-[#5F7D5E] rounded-t-md min-h-[4px]"
                   style={{ height: `${Math.max(4, (Number(w.plans) / maxPlans) * 100)}%` }}
                   title={`${w.plans} plans, ${w.active_users} families`}
                 />
@@ -348,7 +348,7 @@ export default function StatsDashboard() {
                     <td className="py-1.5 pr-2 font-bold">{fmtWeek(c.cohort_week)}</td>
                     <td className="py-1.5 pr-2 text-right">{c.users}</td>
                     <td className="py-1.5 pr-2 text-right">{c.returned_users}</td>
-                    <td className={`py-1.5 text-right font-bold ${Number(c.retention_pct) >= TRIPWIRE_PCT ? 'text-emerald-600' : ''}`}>
+                    <td className={`py-1.5 text-right font-bold ${Number(c.retention_pct) >= TRIPWIRE_PCT ? 'text-[#5F7D5E]' : ''}`}>
                       {Number(c.retention_pct).toFixed(1)}%
                     </td>
                   </tr>

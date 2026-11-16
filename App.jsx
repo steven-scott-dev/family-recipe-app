@@ -40,7 +40,7 @@ function BudgetBar({ pct, barColor }) {
     return () => clearTimeout(t);
   }, [pct]);
   return (
-    <div className="h-3 bg-orange-100 rounded-full overflow-hidden shadow-inner">
+    <div className="h-3 bg-[#E4EBDD] rounded-full overflow-hidden shadow-inner">
       <div
         className={`h-full rounded-full ${barColor} motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out`}
         style={{ width: `${w}%` }}
@@ -1795,8 +1795,8 @@ Each item MUST follow this JSON schema:
       onClick={() => setCheckedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
       className={`text-xs p-2 rounded-lg border cursor-pointer flex gap-2 items-start ${
         checkedItems[item.id] || owned
-          ? 'bg-orange-50 border-orange-200 text-slate-400 line-through'
-          : 'bg-slate-50 border-slate-200 text-slate-700'
+          ? 'bg-[#FDF9F0] border-[#E9DFC9] text-slate-400 line-through'
+          : 'bg-slate-50 border-[#E9DFC9] text-slate-700'
       }`}
     >
       <span className="mt-0.5">{checkedItems[item.id] ? '☑' : '☐'}</span>
@@ -1815,7 +1815,7 @@ Each item MUST follow this JSON schema:
       </span>
       <button
         onClick={(e) => { e.stopPropagation(); togglePantry(item); }}
-        className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${owned ? 'bg-slate-200 text-slate-600' : 'bg-orange-100 text-orange-700'}`}
+        className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${owned ? 'bg-slate-200 text-slate-600' : 'bg-[#E4EBDD] text-[#5F7D5E]'}`}
       >
         {owned ? 'buy' : 'have it'}
       </button>
@@ -2330,7 +2330,7 @@ Requirements:
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FDF9F0] flex items-center justify-center">
         <p className="text-slate-500 text-sm">Loading...</p>
       </div>
     );
@@ -2398,7 +2398,7 @@ Requirements:
             <section className="bg-[#F6DFD2] rounded-xl p-4 mt-3 flex items-start gap-3">
               <span className="text-lg leading-none">{s.key === 'thanksgiving' ? '🦃' : '🎄'}</span>
               <span className="text-sm leading-snug">
-                <b>{s.key === 'thanksgiving' ? 'Thanksgiving, handled' : 'Christmas, handled'}</b>
+                <b>{s.key === 'thanksgiving' ? 'Thanksgiving, handled' : 'Christmas, handled'}</b>{' '}
                 {s.key === 'thanksgiving'
                   ? ` Whole dinner for three — $25.82 from this week's Kroger ad.`
                   : ` ${s.daysAway === 0 ? 'is today' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`} — plan the holiday table under your budget.`}
@@ -2440,9 +2440,9 @@ Requirements:
                 </button>
               </form>
               <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span className="flex-1 border-t border-slate-200" />
+                <span className="flex-1 border-t border-[#E9DFC9]" />
                 or
-                <span className="flex-1 border-t border-slate-200" />
+                <span className="flex-1 border-t border-[#E9DFC9]" />
               </div>
               <button
                 onClick={() => { slLogEvent('cta_click'); handleGoogleLogin(); }}
@@ -2492,11 +2492,11 @@ Requirements:
   // (Placed after the sign-in gate above, so it requires login.)
   if (typeof window !== 'undefined' && window.location.hash === '#stats') {
     return (
-      <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-20">
-        <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white p-4 shadow-md">
+      <div className="min-h-screen bg-[#FDF9F0] text-[#262019] font-sans pb-20" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <header className="bg-[#5F7D5E] text-white p-4 shadow-md">
           <div className="max-w-md mx-auto">
-            <h1 className="text-xl font-bold tracking-wide">SupperLine <span className="text-orange-400">· Stats</span></h1>
-            <p className="text-xs text-slate-400 mt-0.5">Admin analytics — plans, retention, Stripe tripwire</p>
+            <h1 className="text-xl font-bold tracking-wide" style={{ fontFamily: "'Lora', Georgia, serif" }}>SupperLine <span className="text-[#E4EBDD]">· Stats</span></h1>
+            <p className="text-xs text-[#E4EBDD] mt-0.5">Admin analytics — plans, retention, Stripe tripwire</p>
           </div>
         </header>
         <main className="max-w-md mx-auto p-4">
@@ -2580,20 +2580,20 @@ Requirements:
             const pickPhoto = familyPhotoByDish[dishKey(pick.title)] || cachePhotoByKey[dishMatchKey(pick.title)] || libraryPhotoFor(pick.title);
             return (
               <div key={iso} className="w-full shrink-0 snap-center h-full">
-                <div className="relative w-full h-full rounded-xl overflow-hidden shadow bg-gradient-to-br from-orange-600 to-red-700 text-white">
+                <div className="relative w-full h-full rounded-xl overflow-hidden shadow bg-[#5F7D5E] text-white">
                   {pickPhoto
                     ? <img src={pickPhoto} alt="" className="absolute inset-0 w-full h-full object-cover" />
                     : <div className="absolute inset-0 flex items-center justify-center text-8xl opacity-40">🍽️</div>}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/30" />
-                  <p className="absolute top-0 inset-x-0 p-4 text-xs font-bold uppercase tracking-wider text-orange-100">{label} · {pick.type}</p>
+                  <p className="absolute top-0 inset-x-0 p-4 text-xs font-bold uppercase tracking-wider text-[#FDF9F0]">{label} · {pick.type}</p>
                   <div className="absolute bottom-0 inset-x-0 p-4">
                     <p className="font-bold text-2xl leading-snug">{pick.title}</p>
-                    <p className="text-sm text-orange-100 mt-1">
+                    <p className="text-sm text-[#FDF9F0] mt-1">
                       {[pick.prepTime, pick.price != null ? `$${Number(pick.price).toFixed(2)}` : null].filter(Boolean).join(' · ')}
                     </p>
                     <button
                       onClick={() => setSelectedRecipe(pick)}
-                      className="mt-3 w-full bg-white text-orange-700 text-sm font-bold px-3 py-2.5 rounded-lg"
+                      className="mt-3 w-full bg-white text-[#3E5A3F] text-sm font-bold px-3 py-2.5 rounded-lg"
                     >
                       View recipe
                     </button>
@@ -2606,7 +2606,7 @@ Requirements:
         {heroDays.length > 1 && (
           <div className="flex justify-center items-center gap-1 mt-2">
             {heroDays.map((d, i) => (
-              <span key={d.iso} className={`w-1.5 h-1.5 rounded-full ${i === selIdx ? 'bg-orange-500' : 'bg-slate-300'}`} />
+              <span key={d.iso} className={`w-1.5 h-1.5 rounded-full ${i === selIdx ? 'bg-[#5F7D5E]' : 'bg-slate-300'}`} />
             ))}
             <span className="text-[10px] text-slate-400 font-semibold ml-1.5">swipe for next day →</span>
           </div>
@@ -2625,7 +2625,7 @@ Requirements:
     if (!selISO) return null;
     const selMeals = mealsForDate(selISO).filter((m) => m.day === weekdayOf(selISO));
     return (
-      <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 space-y-2">
+      <div className="bg-white p-3 rounded-xl shadow-sm border border-[#E9DFC9] space-y-2">
         <div className="grid grid-cols-7 gap-1">
           {sorted.map((iso) => {
             const d = parseISODate(iso);
@@ -2646,11 +2646,11 @@ Requirements:
                     }
                   }
                 }}
-                className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-orange-400' : ''}`}
+                className={`flex flex-col items-center py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-[#5F7D5E] text-white border-[#5F7D5E] font-bold' : 'bg-white text-slate-600 border-[#E9DFC9]'} ${isToday && !selected ? 'ring-2 ring-[#5F7D5E]' : ''}`}
               >
-                <span className={`text-[9px] ${selected ? 'text-orange-100' : 'text-slate-400'}`}>{'SMTWTFS'[d.getDay()]}</span>
+                <span className={`text-[9px] ${selected ? 'text-[#E4EBDD]' : 'text-slate-400'}`}>{'SMTWTFS'[d.getDay()]}</span>
                 <span>{d.getDate()}</span>
-                <span className={`w-1 h-1 rounded-full mt-0.5 ${hasMeals ? (selected ? 'bg-white' : 'bg-orange-500') : 'bg-transparent'}`} />
+                <span className={`w-1 h-1 rounded-full mt-0.5 ${hasMeals ? (selected ? 'bg-white' : 'bg-[#5F7D5E]') : 'bg-transparent'}`} />
               </button>
             );
           })}
@@ -2661,7 +2661,7 @@ Requirements:
               <button
                 key={i}
                 onClick={() => setSelectedRecipe(m)}
-                className="w-full text-left text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 flex justify-between items-center gap-2"
+                className="w-full text-left text-xs bg-slate-50 border border-[#E9DFC9] rounded-lg px-2.5 py-2 flex justify-between items-center gap-2"
               >
                 {(() => { const p = familyPhotoByDish[dishKey(m.title)] || cachePhotoByKey[dishMatchKey(m.title)] || libraryPhotoFor(m.title); return p ? <img src={p} alt="" loading="lazy" className="w-[52px] h-[52px] rounded-md object-cover shrink-0" /> : null; })()}
                 <span className="font-semibold text-slate-700 truncate flex-1">{m.type}: {m.title}</span>
@@ -2675,17 +2675,17 @@ Requirements:
   };
 
   return (
-    <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-20">
+    <div className="min-h-screen bg-[#FDF9F0] text-[#262019] font-sans pb-20" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* Top Header */}
-      <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white p-4 shadow-md">
+      <header className="bg-[#5F7D5E] text-white p-4 shadow-md">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="text-center flex-1">
-            <h1 className="text-xl font-bold tracking-wide">SupperLine</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Dinner, decided.</p>
+            <h1 className="text-xl font-bold tracking-wide" style={{ fontFamily: "'Lora', Georgia, serif" }}>SupperLine</h1>
+            <p className="text-xs text-[#E4EBDD] mt-0.5">Dinner, decided.</p>
           </div>
           <button
             onClick={handleLogout}
-            className="text-xs text-slate-300 hover:text-white border border-slate-600 rounded px-2 py-1 ml-2 shrink-0"
+            className="text-xs text-white/80 hover:text-white border border-white/40 rounded px-2 py-1 ml-2 shrink-0"
           >
             Sign out
           </button>
@@ -2698,20 +2698,33 @@ Requirements:
         {/* TAB 1: MEAL PLANNING */}
         {activeTab === 'home' && (
           <div className="space-y-4">
+            {/* Family avatars — quiet row, like the landing */}
+            <div className="flex items-center gap-4 justify-center py-1">
+              {[
+                { src: '/avatars/avocado.webp', name: 'Clay' },
+                { src: '/avatars/tomato.webp', name: 'Myka' },
+                { src: '/avatars/fried-egg.webp', name: 'Olivia' },
+              ].map((a) => (
+                <span key={a.name} className="flex flex-col items-center gap-0.5">
+                  <img src={a.src} alt={a.name} title={a.name} className="w-9 h-9 rounded-full object-cover ring-2 ring-[#E4EBDD]" />
+                  <span className="text-[10px] font-semibold text-slate-500">{a.name}</span>
+                </span>
+              ))}
+            </div>
             {(() => {
               const s = holidaySeason();
               if (!s) return null;
               const planned = allPlanDates().includes(s.iso);
               return (
-                <div className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white p-4 rounded-xl shadow">
+                <div className="bg-[#F6DFD2] text-[#262019] p-4 rounded-xl shadow">
                   {s.key === 'thanksgiving' ? (
                     <>
                       <p className="font-bold text-sm">🦃 Thanksgiving {s.daysAway === 0 ? 'is today!' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`}</p>
-                      <p className="text-xs text-orange-200 mt-1">Turkey, stuffing, gravy, cranberry, biscuits, yams, pie — $25.82 for three, from this week's Kroger ad.</p>
+                      <p className="text-xs text-[#262019]/70 mt-1">Turkey, stuffing, gravy, cranberry, biscuits, yams, pie — $25.82 for three, from this week's Kroger ad.</p>
                       {planned ? (
-                        <p className="text-xs font-bold text-emerald-300 mt-2">✓ Thanksgiving dinner is on your plan — find Nov 26 on Home.</p>
+                        <p className="text-xs font-bold text-[#3E5A3F] mt-2">✓ Thanksgiving dinner is on your plan — find Nov 26 on Home.</p>
                       ) : (
-                        <button onClick={() => { navigate('meal_planning'); setGeneratorOpen(true); }} className="mt-2 w-full bg-orange-600 text-white py-2 rounded-lg font-bold text-sm shadow hover:bg-orange-500">
+                        <button onClick={() => { navigate('meal_planning'); setGeneratorOpen(true); }} className="mt-2 w-full bg-[#5F7D5E] text-white py-2 rounded-lg font-bold text-sm shadow hover:bg-[#3E5A3F]">
                           Plan Thanksgiving dinner
                         </button>
                       )}
@@ -2719,8 +2732,8 @@ Requirements:
                   ) : (
                     <>
                       <p className="font-bold text-sm">🎄 Christmas {s.daysAway === 0 ? 'is today!' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`}</p>
-                      <p className="text-xs text-orange-200 mt-1">Plan the holiday table under your budget — same rules, bigger table.</p>
-                      <button onClick={() => { navigate('meal_planning'); setGeneratorOpen(true); }} className="mt-2 w-full bg-orange-600 text-white py-2 rounded-lg font-bold text-sm shadow hover:bg-orange-500">
+                      <p className="text-xs text-[#262019]/70 mt-1">Plan the holiday table under your budget — same rules, bigger table.</p>
+                      <button onClick={() => { navigate('meal_planning'); setGeneratorOpen(true); }} className="mt-2 w-full bg-[#5F7D5E] text-white py-2 rounded-lg font-bold text-sm shadow hover:bg-[#3E5A3F]">
                         Plan a holiday week
                       </button>
                     </>
@@ -2729,13 +2742,13 @@ Requirements:
               );
             })()}
             {(allPlanDates().length === 0) ? (
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center space-y-3">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-[#E9DFC9] text-center space-y-3">
                 <p className="text-4xl">🍽️</p>
-                <h2 className="text-base font-bold text-slate-800">No active meal plan</h2>
+                <h2 className="text-base font-bold text-slate-800" style={{ fontFamily: "'Lora', Georgia, serif" }}>No active meal plan</h2>
                 <p className="text-xs text-slate-500">Generate your week and dinner plans itself — tonight's meal shows up right here.</p>
                 <button
                   onClick={() => { navigate('meal_planning'); startNewWeek(); }}
-                  className="w-full bg-orange-600 text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-orange-700"
+                  className="w-full bg-[#5F7D5E] text-white py-2.5 rounded-lg font-bold text-sm shadow hover:bg-[#3E5A3F]"
                 >
                   ✨ Plan my week
                 </button>
@@ -2747,13 +2760,13 @@ Requirements:
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={openShopping}
-                    className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
+                    className="bg-white border border-[#E9DFC9] rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
                     🛒 Make my list
                   </button>
                   <button
                     onClick={() => { navigate('meal_planning'); startNewWeek(); }}
-                    className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
+                    className="bg-white border border-[#E9DFC9] rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
                     ＋ Plan next week
                   </button>
@@ -2770,13 +2783,13 @@ Requirements:
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={startNewWeek}
-                    className="bg-orange-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-orange-700"
+                    className="bg-[#5F7D5E] text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-[#3E5A3F]"
                   >
                     ＋ Plan next week
                   </button>
                   <button
                     onClick={() => setGeneratorOpen(true)}
-                    className="bg-white border border-slate-200 rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
+                    className="bg-white border border-[#E9DFC9] rounded-xl py-3 text-sm font-bold text-slate-700 shadow-sm"
                   >
                     ✏️ Change this week
                   </button>
@@ -2784,16 +2797,16 @@ Requirements:
               ) : (
                 <button
                   onClick={startNewWeek}
-                  className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-orange-700"
+                  className="w-full bg-[#5F7D5E] text-white py-3 rounded-xl font-bold text-sm shadow hover:bg-[#3E5A3F]"
                 >
                   ＋ Plan a new week
                 </button>
               )
             )}
             {generatorOpen && (
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-[#E9DFC9] space-y-3">
               <div className="flex justify-between items-center border-b pb-2">
-                <h2 className="text-base font-bold text-slate-800">Plan my week</h2>
+                <h2 className="text-base font-bold text-slate-800" style={{ fontFamily: "'Lora', Georgia, serif" }}>Plan my week</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded">
                     ✨ AI Powered
@@ -2817,7 +2830,7 @@ Requirements:
                       type="checkbox"
                       checked={tgSidesOnly}
                       onChange={() => setTgSidesOnly(!tgSidesOnly)}
-                      className="w-4 h-4 accent-orange-600"
+                      className="w-4 h-4 accent-[#5F7D5E]"
                     />
                     Just the sides — skip the bird
                     <span className="text-[10px] text-slate-500">(green bean casserole, mac &amp; cheese, yams, mashed potatoes, stuffing)</span>
@@ -2825,7 +2838,7 @@ Requirements:
                   <button
                     onClick={generateThanksgivingPlan}
                     disabled={isGenerating}
-                    className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-red-800 hover:bg-red-900'}`}
+                    className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#5F7D5E] hover:bg-[#5F7D5E]'}`}
                   >
                     {isGenerating ? '🤖 Planning Thanksgiving...' : '🦃 Plan Thanksgiving dinner'}
                   </button>
@@ -2844,7 +2857,7 @@ Requirements:
                     <button
                       key={b.kind}
                       onClick={() => applyShortcut(b.kind)}
-                      className="text-xs font-bold py-1.5 rounded-lg border bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-400 transition"
+                      className="text-xs font-bold py-1.5 rounded-lg border bg-slate-50 text-slate-600 border-[#E9DFC9] hover:border-[#5F7D5E] transition"
                     >
                       {b.label}
                     </button>
@@ -2867,7 +2880,7 @@ Requirements:
                       <button
                         key={d}
                         onClick={() => togglePlanDate(iso)}
-                        className={`py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-orange-600 text-white border-orange-600 font-bold' : 'bg-white text-slate-600 border-slate-200'} ${isToday && !selected ? 'ring-2 ring-orange-400' : ''}`}
+                        className={`py-1.5 rounded-lg border text-xs transition ${selected ? 'bg-[#5F7D5E] text-white border-[#5F7D5E] font-bold' : 'bg-white text-slate-600 border-[#E9DFC9]'} ${isToday && !selected ? 'ring-2 ring-[#5F7D5E]' : ''}`}
                       >
                         {d}
                       </button>
@@ -2900,7 +2913,7 @@ Requirements:
                         {!isThisMonth && (
                           <button
                             onClick={() => setCalMonth({ y: now.getFullYear(), m: now.getMonth() })}
-                            className="text-[11px] font-bold text-orange-600"
+                            className="text-[11px] font-bold text-[#5F7D5E]"
                           >
                             Today
                           </button>
@@ -2919,7 +2932,7 @@ Requirements:
                           type="checkbox"
                           checked={selectedMeals.includes(meal)}
                           onChange={() => toggleMeal(meal)}
-                          className="w-4 h-4 accent-orange-600"
+                          className="w-4 h-4 accent-[#5F7D5E]"
                         />
                         {meal}
                       </label>
@@ -2928,7 +2941,7 @@ Requirements:
                 </div>
 
               {/* Quick wins: fridge input + plan style toggles */}
-              <div className="border rounded-lg p-2.5 bg-orange-50/60 border-orange-200 space-y-2">
+              <div className="border rounded-lg p-2.5 bg-[#FDF9F0]/60 border-[#E9DFC9] space-y-2">
                 <div>
                   <label className="text-xs font-semibold text-slate-700">🧊 Already in your fridge/pantry?</label>
                   <textarea
@@ -2936,7 +2949,7 @@ Requirements:
                     onChange={(e) => { setFridgeNotes(e.target.value); persistLocal('fridge', e.target.value); }}
                     placeholder="e.g. chicken thighs, half jar pesto, wilting spinach"
                     rows={2}
-                    className="mt-1 w-full text-xs border border-slate-200 rounded-lg p-2 bg-white text-slate-700"
+                    className="mt-1 w-full text-xs border border-[#E9DFC9] rounded-lg p-2 bg-white text-slate-700"
                   />
                   <p className="text-[11px] text-slate-500">The plan will use these up first — and skip them on the shopping list.</p>
                 </div>
@@ -2945,17 +2958,17 @@ Requirements:
                     type="checkbox"
                     checked={modularOn}
                     onChange={() => setModularNights(!modularOn)}
-                    className="w-4 h-4 accent-orange-600"
+                    className="w-4 h-4 accent-[#5F7D5E]"
                   />
                   🍱 Build-your-own nights
-                  {youngChild && <span className="text-[10px] text-orange-700 font-semibold">(great for picky eaters)</span>}
+                  {youngChild && <span className="text-[10px] text-[#5F7D5E] font-semibold">(great for picky eaters)</span>}
                 </label>
                 <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={useUpNight}
                     onChange={() => setUseUpNight(!useUpNight)}
-                    className="w-4 h-4 accent-orange-600"
+                    className="w-4 h-4 accent-[#5F7D5E]"
                   />
                   ♻️ Use-it-up night
                   <span className="text-[10px] text-slate-500">(last night cooks the leftovers)</span>
@@ -2993,7 +3006,7 @@ Requirements:
                           onChange={() => toggleCalEvent(e.id)}
                           className="w-3.5 h-3.5 accent-red-600"
                         />
-                        <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${e.kind === 'dinner-out' ? 'bg-amber-100 text-amber-800' : e.kind === 'guests' ? 'bg-orange-100 text-orange-800' : 'bg-orange-100 text-orange-800'}`}>
+                        <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${e.kind === 'dinner-out' ? 'bg-amber-100 text-amber-800' : e.kind === 'guests' ? 'bg-[#E4EBDD] text-[#3E5A3F]' : 'bg-[#E4EBDD] text-[#3E5A3F]'}`}>
                           {e.kind === 'dinner-out' ? 'Eating out' : e.kind === 'guests' ? 'Guests' : 'Busy night'}
                         </span>
                         <span className="text-slate-700 truncate">{e.weekday} {e.dateLabel} — {e.title}</span>
@@ -3008,7 +3021,7 @@ Requirements:
               )}
 
               {members.length > 0 && (
-                <div className="text-[11px] bg-slate-50 p-2 rounded border border-slate-200 text-slate-600">
+                <div className="text-[11px] bg-slate-50 p-2 rounded border border-[#E9DFC9] text-slate-600">
                   <p className="font-semibold text-slate-700">Accounting for {members.length} member(s):</p>
                   <p className="truncate">
                     Diet/Allergies: {Array.from(new Set(members.flatMap(m => [...(m.dietary_preferences||[]), ...(m.allergies||[])]))).join(', ') || 'None set'}
@@ -3019,7 +3032,7 @@ Requirements:
               <button 
                 onClick={generateAIMealPlan}
                 disabled={isGenerating}
-                className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}
+                className={`w-full text-white py-2.5 rounded-lg font-bold text-sm transition shadow ${isGenerating ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#5F7D5E] hover:bg-[#3E5A3F]'}`}
               >
                 {isGenerating ? '🤖 Creating Custom Recipes...' : '✨ Make my meal plan'}
               </button>
@@ -3059,7 +3072,7 @@ Requirements:
                 <div className="flex justify-between items-center px-1">
                   <h3 className="font-bold text-sm text-slate-700">Weekly Schedule ({generatedMeals.length} Meals)</h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-[#5F7D5E] bg-[#E4EBDD] px-2 py-0.5 rounded">
                       Est. total: ${calculateTotalCost().toFixed(2)}
                     </span>
                     {(() => {
@@ -3068,7 +3081,7 @@ Requirements:
                       const total = calculateTotalCost();
                       const over = total > budget;
                       return (
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${over ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${over ? 'bg-red-100 text-red-700' : 'bg-[#E4EBDD] text-[#3E5A3F]'}`}>
                           {over
                             ? `Over budget by $${(total - budget).toFixed(2)}`
                             : `$${(budget - total).toFixed(2)} under budget`}
@@ -3077,14 +3090,14 @@ Requirements:
                     })()}
                     <button
                       onClick={openShopping}
-                      className="text-xs font-bold px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700"
+                      className="text-xs font-bold px-3 py-1 rounded bg-[#5F7D5E] text-white hover:bg-[#3E5A3F]"
                     >
                       🛒 List
                     </button>
                     <button
                       onClick={handleSavePlan}
                       disabled={isSaving}
-                      className={`text-xs font-bold px-3 py-1 rounded ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-orange-600 text-white hover:bg-orange-700'}`}
+                      className={`text-xs font-bold px-3 py-1 rounded ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-[#5F7D5E] text-white hover:bg-[#3E5A3F]'}`}
                     >
                       {isSaving ? 'Saving...' : '💾 Save Plan'}
                     </button>
@@ -3100,7 +3113,7 @@ Requirements:
                   const budget = Number(family.weekly_budget) || 0;
                   if (!budget || !generatedMeals.length) return null;
                   const pct = (calculateTotalCost() / budget) * 100;
-                  const barColor = pct > 100 ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-gradient-to-r from-emerald-500 to-lime-400';
+                  const barColor = pct > 100 ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-[#5F7D5E]';
                   return (
                     <div className="px-1">
                       <BudgetBar pct={pct} barColor={barColor} />
@@ -3121,7 +3134,7 @@ Requirements:
                           onClick={() => { if (moveIdx !== null) moveMealToDay(moveIdx, day); }}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => { e.preventDefault(); const i = Number(e.dataTransfer.getData('text/plain')); if (!isNaN(i)) moveMealToDay(i, day); }}
-                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded ${moveIdx !== null ? 'bg-orange-100 text-orange-800 cursor-pointer hover:bg-orange-200' : 'text-slate-500'}`}
+                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded ${moveIdx !== null ? 'bg-[#E4EBDD] text-[#3E5A3F] cursor-pointer hover:bg-[#E4EBDD]' : 'text-slate-500'}`}
                         >
                           {day}{moveIdx !== null && ' — tap to move here'}
                         </div>
@@ -3136,7 +3149,7 @@ Requirements:
                           <div
                             key={idx}
                             onClick={() => setSelectedRecipe(meal)}
-                            className={`bg-white p-3 rounded-lg border text-xs flex justify-between items-center shadow-sm cursor-pointer transition ${moving ? 'border-orange-500 ring-2 ring-orange-300' : 'border-slate-200 hover:border-orange-500 hover:bg-orange-50/40'}`}
+                            className={`bg-white p-3 rounded-lg border text-xs flex justify-between items-center shadow-sm cursor-pointer transition ${moving ? 'border-[#5F7D5E] ring-2 ring-[#E4EBDD]' : 'border-[#E9DFC9] hover:border-[#5F7D5E] hover:bg-[#FDF9F0]/40'}`}
                           >
                             <div className="flex items-start gap-2 min-w-0">
                               <span
@@ -3144,7 +3157,7 @@ Requirements:
                                 onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(idx)); e.stopPropagation(); }}
                                 onClick={(e) => { e.stopPropagation(); setMoveIdx(moving ? null : idx); }}
                                 title="Drag or tap to move this meal to another day"
-                                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-orange-600 text-base leading-none pt-0.5 select-none shrink-0"
+                                className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-[#5F7D5E] text-base leading-none pt-0.5 select-none shrink-0"
                               >
                                 ⋮⋮
                               </span>
@@ -3176,17 +3189,17 @@ Requirements:
 
             {/* Saved Plans — always visible */}
             {savedPlans.length > 0 && (
-              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+              <div className="bg-white p-4 rounded-xl border border-[#E9DFC9] space-y-2">
                 <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Saved Plans</h4>
                 <div className="space-y-1.5">
                   {savedPlans.map(plan => (
-                    <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-slate-200 rounded p-2">
+                    <div key={plan.id} className="flex justify-between items-center text-xs bg-slate-50 border border-[#E9DFC9] rounded p-2">
                       <div>
                         <p className="font-bold text-slate-700">{plan.name}</p>
                         <p className="text-slate-500">{plan.days} days · {plan.meals_per_day}/day · ~${Number(plan.total_cost || 0).toFixed(2)} est.</p>
                       </div>
                       <div className="flex gap-1.5">
-                        <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-orange-700 hover:underline">Load</button>
+                        <button onClick={() => handleLoadPlan(plan.id)} className="font-bold text-[#5F7D5E] hover:underline">Load</button>
                         <button onClick={() => handleDeletePlan(plan.id)} className="font-bold text-red-600 hover:underline">Delete</button>
                       </div>
                     </div>
@@ -3201,8 +3214,8 @@ Requirements:
         {activeTab === 'setup' && (
           <div className="space-y-4">
             {/* Household Settings */}
-            <form onSubmit={handleSaveFamily} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-              <h2 className="text-base font-bold text-slate-800 border-b pb-2">Household Profile</h2>
+            <form onSubmit={handleSaveFamily} className="bg-white p-4 rounded-xl shadow-sm border border-[#E9DFC9] space-y-3">
+              <h2 className="text-base font-bold text-slate-800 border-b pb-2" style={{ fontFamily: "'Lora', Georgia, serif" }}>Household Profile</h2>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Family Name</label>
                 <input 
@@ -3221,14 +3234,14 @@ Requirements:
                   className="w-full border rounded p-2 text-sm bg-slate-50" 
                 />
               </div>
-              <button type="submit" className="w-full bg-red-800 text-white py-2 rounded font-semibold text-xs hover:bg-red-900">
+              <button type="submit" className="w-full bg-[#5F7D5E] text-white py-2 rounded font-semibold text-xs hover:bg-[#5F7D5E]">
                 Update Household Settings
               </button>
             </form>
 
             {/* Add Family Member */}
-            <form onSubmit={handleSaveMember} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-              <h2 className="text-base font-bold text-slate-800 border-b pb-2">{editingMemberId ? 'Edit Family Member' : 'Add / Configure Family Member'}</h2>
+            <form onSubmit={handleSaveMember} className="bg-white p-4 rounded-xl shadow-sm border border-[#E9DFC9] space-y-3">
+              <h2 className="text-base font-bold text-slate-800 border-b pb-2" style={{ fontFamily: "'Lora', Georgia, serif" }}>{editingMemberId ? 'Edit Family Member' : 'Add / Configure Family Member'}</h2>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Member Name</label>
@@ -3261,14 +3274,14 @@ Requirements:
                     <button
                       type="button"
                       onClick={() => setMemberRole('parent')}
-                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'parent' ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'parent' ? 'bg-[#5F7D5E] text-white border-[#5F7D5E]' : 'bg-slate-100 text-slate-600'}`}
                     >
                       Parent
                     </button>
                     <button
                       type="button"
                       onClick={() => setMemberRole('child')}
-                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'child' ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`py-2 text-xs rounded font-bold border ${memberRole === 'child' ? 'bg-[#5F7D5E] text-white border-[#5F7D5E]' : 'bg-slate-100 text-slate-600'}`}
                     >
                       Child
                     </button>
@@ -3284,7 +3297,7 @@ Requirements:
                       key={p}
                       type="button"
                       onClick={() => setMemberPortion(p)}
-                      className={`py-2 text-xs rounded font-bold border capitalize ${memberPortion === p ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`py-2 text-xs rounded font-bold border capitalize ${memberPortion === p ? 'bg-[#5F7D5E] text-white border-[#5F7D5E]' : 'bg-slate-100 text-slate-600'}`}
                     >
                       {p}
                     </button>
@@ -3299,14 +3312,14 @@ Requirements:
                   <button 
                     type="button"
                     onClick={() => setIsManaged(true)}
-                    className={`py-2 text-xs rounded font-bold border ${isManaged ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
+                    className={`py-2 text-xs rounded font-bold border ${isManaged ? 'bg-[#5F7D5E] text-white border-[#5F7D5E]' : 'bg-slate-100 text-slate-600'}`}
                   >
                     Add Directly (Child/Dependent)
                   </button>
                   <button 
                     type="button"
                     onClick={() => setIsManaged(false)}
-                    className={`py-2 text-xs rounded font-bold border ${!isManaged ? 'bg-orange-700 text-white border-orange-700' : 'bg-slate-100 text-slate-600'}`}
+                    className={`py-2 text-xs rounded font-bold border ${!isManaged ? 'bg-[#5F7D5E] text-white border-[#5F7D5E]' : 'bg-slate-100 text-slate-600'}`}
                   >
                     Invite via Email
                   </button>
@@ -3334,7 +3347,7 @@ Requirements:
                       key={diet}
                       type="button"
                       onClick={() => toggleArrayItem(selectedDiet, setSelectedDiet, diet)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selectedDiet.includes(diet) ? 'bg-orange-600 text-white border-orange-600' : 'bg-slate-50 text-slate-600 border-slate-300'}`}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border ${selectedDiet.includes(diet) ? 'bg-[#5F7D5E] text-white border-[#5F7D5E]' : 'bg-slate-50 text-slate-600 border-slate-300'}`}
                     >
                       {diet}
                     </button>
@@ -3371,7 +3384,7 @@ Requirements:
 
               <button 
                 type="submit" 
-                className="w-full bg-red-900 text-white py-3 rounded-lg font-bold text-sm shadow hover:bg-red-800 transition"
+                className="w-full bg-[#5F7D5E] text-white py-3 rounded-lg font-bold text-sm shadow hover:bg-[#5F7D5E] transition"
               >
                 {editingMemberId ? 'Save Changes' : 'Save Member & Continue'}
               </button>
@@ -3390,15 +3403,15 @@ Requirements:
 
         {/* TAB 3: FAMILY ROSTER */}
         {activeTab === 'family' && (
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
-            <h2 className="text-base font-bold text-slate-800 border-b pb-2">Family Roster ({members.length})</h2>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-[#E9DFC9] space-y-3">
+            <h2 className="text-base font-bold text-slate-800 border-b pb-2" style={{ fontFamily: "'Lora', Georgia, serif" }}>Family Roster ({members.length})</h2>
             
             {members.length === 0 ? (
               <p className="text-xs text-slate-500 py-4 text-center">No family members configured yet. Go to Setup to add members.</p>
             ) : (
               <div className="space-y-3">
                 {members.map(member => (
-                  <div key={member.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 space-y-1">
+                  <div key={member.id} className="p-3 border border-[#E9DFC9] rounded-lg bg-slate-50 space-y-1">
                     <div className="flex justify-between items-center">
                       <h3 className="font-bold text-sm text-slate-800">
                         {member.name}
@@ -3406,7 +3419,7 @@ Requirements:
                         {member.role ? <span className="font-normal text-slate-500"> · {member.role}</span> : null}
                         {member.portion_size && member.portion_size !== 'standard' ? <span className="font-normal text-slate-500"> · {member.portion_size} portions</span> : null}
                       </h3>
-                      <span className={`text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded ${member.is_managed ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'}`}>
+                      <span className={`text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded ${member.is_managed ? 'bg-[#E4EBDD] text-[#5F7D5E]' : 'bg-purple-100 text-purple-700'}`}>
                         {member.is_managed ? 'Managed' : 'Account Member'}
                       </span>
                     </div>
@@ -3435,7 +3448,7 @@ Requirements:
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => handleEditMember(member)}
-                        className="flex-1 bg-red-800 text-white py-1.5 rounded text-xs font-bold hover:bg-red-900"
+                        className="flex-1 bg-[#5F7D5E] text-white py-1.5 rounded text-xs font-bold hover:bg-[#5F7D5E]"
                       >
                         Edit
                       </button>
@@ -3452,13 +3465,13 @@ Requirements:
             )}
 
             {/* DATA EXPORT */}
-            <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
-              <h2 className="text-base font-bold text-slate-800">Your Data</h2>
+            <div className="mt-3 pt-3 border-t border-[#E9DFC9] space-y-2">
+              <h2 className="text-base font-bold text-slate-800" style={{ fontFamily: "'Lora', Georgia, serif" }}>Your Data</h2>
               <p className="text-xs text-slate-500">Download everything SupperLine has about your household: family profile, meal plans, saved recipes.</p>
               <button
                 onClick={handleExportData}
                 disabled={isExporting}
-                className="w-full bg-orange-600 text-white py-2 rounded text-sm font-bold hover:bg-orange-700 disabled:opacity-50"
+                className="w-full bg-[#5F7D5E] text-white py-2 rounded text-sm font-bold hover:bg-[#3E5A3F] disabled:opacity-50"
               >
                 {isExporting ? 'Exporting…' : 'Export My Data (JSON)'}
               </button>
@@ -3506,7 +3519,7 @@ Requirements:
                 </p>
                 <button
                   onClick={generateList}
-                  className="w-full bg-orange-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-orange-700"
+                  className="w-full bg-[#5F7D5E] text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-[#3E5A3F]"
                 >
                   Generate Shopping List
                 </button>
@@ -3529,7 +3542,7 @@ Requirements:
                       </p>
                 {AISLE_ORDER.filter((aisle) => byAisle[aisle]).map((aisle) => (
                   <React.Fragment key={aisle}>
-                    <p className="text-[11px] font-bold text-orange-700 uppercase tracking-wider pt-1">
+                    <p className="text-[11px] font-bold text-[#5F7D5E] uppercase tracking-wider pt-1">
                       {aisle}
                     </p>
                     <ul className="space-y-1.5">
@@ -3574,7 +3587,7 @@ Requirements:
                 })()}
                 <button
                   onClick={copyShoppingList}
-                  className="w-full bg-red-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
+                  className="w-full bg-[#5F7D5E] text-white py-2.5 rounded-lg text-xs font-bold shadow"
                 >
                   Copy List
                 </button>
@@ -3583,7 +3596,7 @@ Requirements:
                     <button
                       onClick={sendToKroger}
                       disabled={krogerStatus === 'sending'}
-                      className="w-full bg-orange-600 text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-orange-700 disabled:opacity-60"
+                      className="w-full bg-[#5F7D5E] text-white py-2.5 rounded-lg text-xs font-bold shadow hover:bg-[#3E5A3F] disabled:opacity-60"
                     >
                       {krogerStatus === 'sending'
                         ? 'Sending to Kroger…'
@@ -3621,7 +3634,7 @@ Requirements:
                           <button
                             key={s.locationId}
                             onClick={() => pickKrogerStore(s)}
-                            className="w-full text-left border rounded-lg px-2 py-2 text-xs hover:bg-orange-50"
+                            className="w-full text-left border rounded-lg px-2 py-2 text-xs hover:bg-[#FDF9F0]"
                           >
                             <span className="font-bold">{s.name}</span>
                             <span className="block text-slate-500">{s.address}</span>
@@ -3636,7 +3649,7 @@ Requirements:
                         )}
                         {!krogerResult.error && (
                           <React.Fragment>
-                            <p className="font-bold text-orange-700">
+                            <p className="font-bold text-[#5F7D5E]">
                               Added {krogerResult.added.length} item{krogerResult.added.length === 1 ? '' : 's'} to your Kroger cart.
                             </p>
                             {krogerResult.added.map((n, i) => (
@@ -3697,15 +3710,15 @@ Requirements:
                     ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url
                     : (familyPhotoByDish[dishKey(m.title)] || cachePhotoByKey[dishMatchKey(m.title)] || libraryPhotoFor(m.title));
                   return (
-                    <div key={i} className={`w-full shrink-0 snap-center overflow-hidden border-b-2 ${isSel ? 'border-orange-500' : 'border-slate-200'}`}>
+                    <div key={i} className={`w-full shrink-0 snap-center overflow-hidden border-b-2 ${isSel ? 'border-[#5F7D5E]' : 'border-[#E9DFC9]'}`}>
                       <div className="p-3">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{m.day} {m.type}</p>
-                        <h3 className="font-bold text-base text-slate-800 leading-snug">{m.title}</h3>
+                        <h3 className="font-bold text-base text-slate-800 leading-snug" style={{ fontFamily: "'Lora', Georgia, serif" }}>{m.title}</h3>
                         <div className="flex gap-2 text-xs font-semibold mt-1.5 flex-wrap items-center">
-                          <span className="text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-200">
+                          <span className="text-[#5F7D5E] bg-[#FDF9F0] px-2 py-0.5 rounded border border-[#E9DFC9]">
                             ⏱️ {m.prepTime || '15-20 mins'}
                           </span>
-                          <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                          <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-[#E9DFC9] flex items-center gap-1">
                             🍽️
                             {isSel && <button onClick={() => adjustServings(-1)} className="px-1.5 font-bold text-slate-500 hover:text-slate-900">−</button>}
                             <span>{m.servings || '2-4 servings'}</span>
@@ -3724,7 +3737,7 @@ Requirements:
               {recipeStripMeals.length > 1 && (
                 <div className="flex justify-center items-center gap-1 mt-2">
                   {recipeStripMeals.map((_, i) => (
-                    <span key={i} className={`w-1.5 h-1.5 rounded-full ${i === recipeStripIdx ? 'bg-orange-500' : 'bg-slate-300'}`} />
+                    <span key={i} className={`w-1.5 h-1.5 rounded-full ${i === recipeStripIdx ? 'bg-[#5F7D5E]' : 'bg-slate-300'}`} />
                   ))}
                   <span className="text-[10px] text-slate-400 font-semibold ml-1.5">swipe for next day →</span>
                 </div>
@@ -3735,7 +3748,7 @@ Requirements:
             {selectedRecipe.instructions?.length > 0 && (
               <button
                 onClick={() => { setCookStep(0); setCookMode(true); }}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg text-sm font-bold shadow"
+                className="w-full bg-[#5F7D5E] hover:bg-[#3E5A3F] text-white py-3 rounded-lg text-sm font-bold shadow"
               >
                 🍳 Start cooking — step by step
               </button>
@@ -3750,7 +3763,7 @@ Requirements:
                   {dishPhotos.length > 1 && (
                     <div className="flex gap-1.5 overflow-x-auto">
                       {dishPhotos.map((p, i) => (
-                        <button key={p.id} onClick={() => setActivePhotoIdx(i)} className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 ${i === activePhotoIdx ? 'border-orange-500' : 'border-transparent'}`}>
+                        <button key={p.id} onClick={() => setActivePhotoIdx(i)} className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 ${i === activePhotoIdx ? 'border-[#5F7D5E]' : 'border-transparent'}`}>
                           <img src={p.photo_url} alt="" className="w-full h-full object-cover" />
                         </button>
                       ))}
@@ -3759,7 +3772,7 @@ Requirements:
                   <button
                     onClick={() => photoInputRef.current && photoInputRef.current.click()}
                     disabled={uploadingPhoto}
-                    className="mt-1.5 text-xs font-bold text-orange-700 hover:text-orange-800 disabled:opacity-50"
+                    className="mt-1.5 text-xs font-bold text-[#5F7D5E] hover:text-[#3E5A3F] disabled:opacity-50"
                   >
                     {uploadingPhoto ? 'Uploading...' : '+ Add another photo'}
                   </button>
@@ -3768,7 +3781,7 @@ Requirements:
                 <button
                   onClick={() => photoInputRef.current && photoInputRef.current.click()}
                   disabled={uploadingPhoto}
-                  className="w-full py-2.5 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-xs font-semibold hover:border-orange-400 hover:text-orange-700 disabled:opacity-50"
+                  className="w-full py-2.5 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-xs font-semibold hover:border-[#5F7D5E] hover:text-[#5F7D5E] disabled:opacity-50"
                 >
                   {uploadingPhoto ? 'Uploading...' : '📸 Snap your dish — your photo replaces the one above'}
                 </button>
@@ -3786,8 +3799,8 @@ Requirements:
             {selectedRecipe.nutrition && (
               <div>
                 <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Nutrition <span className="font-normal normal-case">(per serving, est.)</span></h4>
-                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                  <div className="text-center border-b border-slate-200 pb-1.5 mb-1.5">
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-[#E9DFC9]">
+                  <div className="text-center border-b border-[#E9DFC9] pb-1.5 mb-1.5">
                     <span className="text-2xl font-extrabold text-slate-800">{selectedRecipe.nutrition.calories || '\u2013'}</span>
                     <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">cal</span>
                   </div>
@@ -3811,7 +3824,7 @@ Requirements:
 
             <div>
               <h4 className="text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">Ingredients & Quantities</h4>
-              <ul className="list-disc list-inside text-xs text-slate-700 space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <ul className="list-disc list-inside text-xs text-slate-700 space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-[#E9DFC9]">
                 {selectedRecipe.ingredients?.map((item, i) => (
                   <li key={i} className="leading-snug">{item}</li>
                 ))}
@@ -3825,7 +3838,7 @@ Requirements:
                   {members.map((member) => {
                     const r = (selectedRecipe.ratings || {})[member.id] || 0;
                     return (
-                      <div key={member.id} className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                      <div key={member.id} className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-[#E9DFC9]">
                         <span className="text-xs font-semibold text-slate-700 truncate mr-2">{member.name}</span>
                         <span className="flex gap-0.5 shrink-0">
                           {[1, 2, 3, 4, 5].map((s) => (
@@ -3856,7 +3869,7 @@ Requirements:
 
             <button 
               onClick={() => setSelectedRecipe(null)}
-              className="w-full bg-red-900 text-white py-2.5 rounded-lg text-xs font-bold shadow"
+              className="w-full bg-[#5F7D5E] text-white py-2.5 rounded-lg text-xs font-bold shadow"
             >
               Close Recipe
             </button>
@@ -3873,21 +3886,21 @@ Requirements:
         const idx = Math.min(cookStep, Math.max(total - 1, 0));
         const photo = (dishPhotos.length > 0 ? dishPhotos[Math.min(activePhotoIdx, dishPhotos.length - 1)].photo_url : null) || cachePhotoByKey[dishMatchKey(selectedRecipe.title)] || libraryPhotoFor(selectedRecipe.title);
         return (
-          <div className="fixed inset-0 bg-orange-50 z-[60] flex flex-col">
-            <div className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white px-4 py-3 flex items-center justify-between gap-3">
-              <p className="font-bold text-sm truncate">{selectedRecipe.title}</p>
+          <div className="fixed inset-0 bg-[#FDF9F0] z-[60] flex flex-col">
+            <div className="bg-[#5F7D5E] text-white px-4 py-3 flex items-center justify-between gap-3">
+              <p className="font-bold text-sm truncate" style={{ fontFamily: "'Lora', Georgia, serif" }}>{selectedRecipe.title}</p>
               <button onClick={() => setCookMode(false)} className="shrink-0 text-xs font-bold bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-lg">✕ Exit</button>
             </div>
             {photo && <img src={photo} alt="" className="w-full h-36 object-cover" />}
             <div className="px-5 pt-4 max-w-md w-full mx-auto flex-1 flex flex-col w-full">
               {!done ? (
                 <>
-                  <p className="text-xs font-bold uppercase tracking-wider text-orange-700">Step {idx + 1} of {total}</p>
-                  <div className="h-1.5 bg-orange-100 rounded-full mt-2 overflow-hidden">
-                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${((idx + 1) / total) * 100}%` }} />
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#5F7D5E]">Step {idx + 1} of {total}</p>
+                  <div className="h-1.5 bg-[#E4EBDD] rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-[#5F7D5E] rounded-full" style={{ width: `${((idx + 1) / total) * 100}%` }} />
                   </div>
                   <p className="text-[26px] leading-snug font-light text-slate-800 mt-6">{steps[idx]}</p>
-                  <details className="mt-auto mb-3 bg-white border border-orange-200 rounded-lg">
+                  <details className="mt-auto mb-3 bg-white border border-[#E9DFC9] rounded-lg">
                     <summary className="px-3 py-2.5 text-xs font-bold text-slate-600 cursor-pointer">Ingredients (peek)</summary>
                     <ul className="list-disc list-inside text-xs text-slate-700 space-y-1 px-3 pb-3">
                       {(selectedRecipe.ingredients || []).map((item, i) => (<li key={i} className="leading-snug">{item}</li>))}
@@ -3903,7 +3916,7 @@ Requirements:
                     </button>
                     <button
                       onClick={() => setCookStep(idx + 1)}
-                      className="flex-[2] py-4 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-700 text-white shadow"
+                      className="flex-[2] py-4 rounded-xl text-sm font-bold bg-[#5F7D5E] hover:bg-[#3E5A3F] text-white shadow"
                     >
                       {idx === total - 1 ? 'Finish 🎉' : 'Next step →'}
                     </button>
@@ -3912,11 +3925,11 @@ Requirements:
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center pb-10">
                   <p className="text-5xl mb-4">🎉</p>
-                  <p className="text-3xl font-light text-slate-800">That's dinner.</p>
+                  <p className="text-3xl font-light text-slate-800" style={{ fontFamily: "'Lora', Georgia, serif" }}>That's dinner.</p>
                   <p className="text-sm text-slate-500 mt-2">{selectedRecipe.title} — done, step by step.</p>
                   <button
                     onClick={() => { setCookMode(false); setSelectedRecipe(null); }}
-                    className="mt-6 bg-red-900 text-white px-8 py-3.5 rounded-xl text-sm font-bold shadow"
+                    className="mt-6 bg-[#5F7D5E] text-white px-8 py-3.5 rounded-xl text-sm font-bold shadow"
                   >
                     Back to my week
                   </button>
@@ -3959,38 +3972,38 @@ Requirements:
       )}
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 text-xs font-bold z-40">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E9DFC9] flex justify-around p-2 text-xs font-bold z-40">
         <button 
           onClick={() => navigate('home')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'home' ? 'text-orange-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'home' ? 'text-[#5F7D5E]' : 'text-slate-500'}`}
         >
           <span>🏠</span>
           <span>Home</span>
         </button>
         <button 
           onClick={() => navigate('meal_planning')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'meal_planning' ? 'text-orange-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'meal_planning' ? 'text-[#5F7D5E]' : 'text-slate-500'}`}
         >
           <span>🥗</span>
           <span>Meals</span>
         </button>
         <button 
           onClick={() => navigate('recipes')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'recipes' ? 'text-orange-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'recipes' ? 'text-[#5F7D5E]' : 'text-slate-500'}`}
         >
           <span>📖</span>
           <span>Recipes</span>
         </button>
         <button 
           onClick={() => navigate('setup')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'setup' ? 'text-orange-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'setup' ? 'text-[#5F7D5E]' : 'text-slate-500'}`}
         >
           <span>⚙️</span>
           <span>Setup</span>
         </button>
         <button 
           onClick={() => navigate('family')}
-          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'family' ? 'text-orange-600' : 'text-slate-500'}`}
+          className={`flex flex-col items-center py-1 px-3 rounded ${activeTab === 'family' ? 'text-[#5F7D5E]' : 'text-slate-500'}`}
         >
           <span>👨‍👩‍👧</span>
           <span>Family</span>
