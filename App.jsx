@@ -2338,59 +2338,81 @@ Requirements:
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-orange-50 text-slate-800 font-sans pb-10">
-        <header className="bg-gradient-to-r from-red-950 via-red-800 to-orange-700 text-white">
-          <div className="max-w-md mx-auto px-4 pt-10 pb-8 text-center">
-            <p className="text-orange-300 font-bold tracking-[0.25em] text-xs uppercase">SupperLine</p>
-            <h1 className="text-[42px] leading-[1.05] font-light tracking-tight mt-3">A week of dinners, <span className="font-semibold text-orange-400">under your budget.</span></h1>
-            <p className="text-slate-200 mt-4 text-sm leading-relaxed">Tell it who's eating and what you can spend. SupperLine plans the week, prices every dinner, and writes the grocery list.</p>
-            {(() => { const s = holidaySeason(); if (!s) return null; return (
-              <p className="text-orange-300 mt-3 text-sm font-semibold">
-                {s.key === 'thanksgiving'
-                  ? `🦃 Thanksgiving ${s.daysAway === 0 ? 'is today' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`} — the whole dinner for three, $25.82 from this week's Kroger ad.`
-                  : `🎄 Christmas ${s.daysAway === 0 ? 'is today' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`} — plan the holiday table under your budget.`}
-              </p>
-            ); })()}
-            <a href="#signin" className="inline-block mt-5 bg-orange-600 text-white font-bold text-sm px-6 py-3 rounded-lg">
-              Start planning free
-            </a>
-            <p className="text-slate-400 mt-3 text-xs">Free during launch · Built to replace Mealime, which shut down Oct 21</p>
-            <img src="/dish/chicken-veggie-stew.jpg" alt="A weeknight stew planned by SupperLine" className="mt-6 w-full h-44 object-cover rounded-xl border border-white/20" />
+      <div className="min-h-screen bg-[#FDF9F0] text-[#262019] pb-10" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <div className="max-w-md mx-auto px-4 pt-5">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-lg tracking-tight" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#C4663B] mr-2 align-middle" />
+              SupperLine
+            </span>
+            <a href="#signin" className="text-xs font-semibold opacity-65">Sign in</a>
           </div>
-        </header>
 
-        <main className="max-w-md mx-auto px-4 py-6 space-y-4">
-          <section className="bg-white rounded-xl p-5 shadow">
-            <h2 className="font-bold mb-3">How it works</h2>
-            <ol className="space-y-3 text-sm text-slate-600">
-              <li className="flex gap-3"><span className="text-2xl font-light text-orange-600 leading-none">1</span><span><span className="font-bold text-slate-800">Tell it your family.</span> Who eats, likes, dislikes, allergies.</span></li>
-              <li className="flex gap-3"><span className="text-2xl font-light text-orange-600 leading-none">2</span><span><span className="font-bold text-slate-800">Set your weekly grocery budget.</span> That's a hard ceiling, not a suggestion.</span></li>
-              <li className="flex gap-3"><span className="text-2xl font-light text-orange-600 leading-none">3</span><span><span className="font-bold text-slate-800">Get the week.</span> Seven dinners, every one priced, plus one shopping list.</span></li>
-            </ol>
-          </section>
+          <h1 className="text-[34px] leading-[1.1] mt-8" style={{ fontFamily: "'Lora', Georgia, serif" }}>
+            Dinner&rsquo;s handled<br />this week.
+          </h1>
+          <p className="text-sm leading-relaxed mt-3 opacity-70">A week of dinners your family will actually eat — planned around your budget, not over it.</p>
 
-          <section className="bg-white rounded-xl p-5 shadow">
-            <h2 className="font-bold mb-3">Built for what Mealime never fixed</h2>
-            <ul className="space-y-3 text-sm text-slate-600">
-              <li><span className="font-bold text-orange-700 mr-1.5">01</span><span className="font-bold text-slate-800">Portions per person.</span> Small, standard, or large for each family member. Never locked to 2, 4, or 6 servings.</li>
-              <li><span className="font-bold text-orange-700 mr-1.5">02</span><span className="font-bold text-slate-800">Your budget is the law.</span> Set your weekly grocery budget and the plan must come in under it.</li>
-              <li><span className="font-bold text-orange-700 mr-1.5">03</span><span className="font-bold text-slate-800">A real calendar.</span> Month view with busy-night awareness and Google Calendar sync. Not a list.</li>
-              <li><span className="font-bold text-orange-700 mr-1.5">04</span><span className="font-bold text-slate-800">One merged shopping list.</span> Duplicates combined and units rounded up. No 3.7 cans of beans.</li>
-            </ul>
-          </section>
+          <div className="flex items-center gap-2 mt-5">
+            <img src="/avatars/avocado.webp" alt="Clay — avocado" className="w-10 h-10 rounded-full object-cover border border-[#E9DFC9]" />
+            <img src="/avatars/tomato.webp" alt="Myka — tomato" className="w-10 h-10 rounded-full object-cover border border-[#E9DFC9]" />
+            <img src="/avatars/fried-egg.webp" alt="Olivia — fried egg" className="w-10 h-10 rounded-full object-cover border border-[#E9DFC9]" />
+          </div>
+          <p className="text-xs mt-2 opacity-65">Clay, Myka &amp; Olivia are already set up.</p>
 
-          <section className="bg-red-950 rounded-xl p-5 shadow text-white">
-            <h2 className="font-bold mb-1">Proof, not promises</h2>
-            <p className="text-xs text-orange-300 font-semibold mb-3">One real week from a real SupperLine plan</p>
-            <div className="flex items-end gap-2">
-              <span className="text-4xl font-light tracking-tight">$26.90</span>
-              <span className="text-sm text-slate-300 pb-1">est. for 7 dinners</span>
+          <a href="#signin" onClick={() => slLogEvent('cta_click')} className="block text-center mt-4 bg-[#5F7D5E] text-white font-bold text-sm px-6 py-3.5 rounded-lg">
+            Plan my week — free
+          </a>
+
+          <section className="bg-white rounded-xl p-5 mt-4 border border-[#E9DFC9]">
+            <div className="flex items-center justify-between">
+              <b className="text-[13px]">This week</b>
+              <span className="text-xs opacity-65">7 dinners</span>
             </div>
-            <p className="text-sm text-slate-300 mt-2">That's <span className="font-bold text-emerald-400">$123.10 left over</span> from a $150 weekly budget — with dinners like chicken &amp; veggie stew ($5.00 est.) and turkey chili ($4.80 est.) on the plan.</p>
-            <p className="text-[11px] text-slate-400 mt-3">Your week prices to your budget and your family. The ceiling is the point.</p>
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold tracking-wide bg-[#E4EBDD] text-[#3E5A3F] px-2 py-1 rounded">STEW</span>
+                <span className="flex-1 text-sm"><b>One-pot chicken &amp; veggie stew</b></span>
+                <span className="text-sm font-bold">$5.00</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold tracking-wide bg-[#E4EBDD] text-[#3E5A3F] px-2 py-1 rounded">CHILI</span>
+                <span className="flex-1 text-sm"><b>Turkey &amp; black bean chili</b></span>
+                <span className="text-sm font-bold">$4.80</span>
+              </div>
+            </div>
+            <p className="text-xs opacity-60 mt-3">…plus 5 more dinners — $26.90 est. for all 7.</p>
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs">Week so far</span>
+                <span className="text-xs opacity-70">$26.90 of $150</span>
+              </div>
+              <div className="h-2 bg-[#E4EBDD] rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full bg-[#5F7D5E] rounded-full" style={{ width: '18%' }} />
+              </div>
+            </div>
+            <p className="text-[11px] opacity-55 mt-2">One real week from a real SupperLine plan. Prices are estimates.</p>
           </section>
 
-          <section id="signin" className="bg-white rounded-xl p-6 shadow space-y-4">
+          {(() => { const s = holidaySeason(); if (!s) return null; return (
+            <section className="bg-[#F6DFD2] rounded-xl p-4 mt-3 flex items-start gap-3">
+              <span className="text-lg leading-none">{s.key === 'thanksgiving' ? '🦃' : '🎄'}</span>
+              <span className="text-sm leading-snug">
+                <b>{s.key === 'thanksgiving' ? 'Thanksgiving, handled' : 'Christmas, handled'}</b>
+                {s.key === 'thanksgiving'
+                  ? ` Whole dinner for three — $25.82 from this week's Kroger ad.`
+                  : ` ${s.daysAway === 0 ? 'is today' : `in ${s.daysAway} day${s.daysAway === 1 ? '' : 's'}`} — plan the holiday table under your budget.`}
+              </span>
+            </section>
+          ); })()}
+
+          <div className="flex items-start justify-between gap-2 mt-5 text-[11px] leading-snug opacity-75">
+            <span className="flex items-center gap-1.5"><span className="w-4 h-4 shrink-0 rounded-full bg-[#5F7D5E] text-white text-[10px] font-bold flex items-center justify-center">1</span>Tell it your budget</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-4 shrink-0 rounded-full bg-[#5F7D5E] text-white text-[10px] font-bold flex items-center justify-center">2</span>It plans the week</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-4 shrink-0 rounded-full bg-[#5F7D5E] text-white text-[10px] font-bold flex items-center justify-center">3</span>Send list to Kroger</span>
+          </div>
+
+          <section id="signin" className="bg-white rounded-xl p-6 mt-6 border border-[#E9DFC9] space-y-4">
             <div className="text-center">
               <h2 className="text-lg font-bold">Start planning</h2>
               <p className="text-xs text-slate-500 mt-1">Free during launch. Sign in with email or Google.</p>
@@ -2412,7 +2434,7 @@ Requirements:
                 />
                 <button
                   type="submit"
-                  className="w-full bg-red-900 text-white py-2.5 rounded-lg text-sm font-bold"
+                  className="w-full bg-[#5F7D5E] text-white py-2.5 rounded-lg text-sm font-bold"
                 >
                   Send sign-in link
                 </button>
@@ -2432,7 +2454,7 @@ Requirements:
             )}
           </section>
 
-          <p className="text-center text-[11px] text-slate-400 pt-1">
+          <p className="text-center text-[11px] opacity-50 pt-3">
             <button className="underline" onClick={() => setLegalView('privacy')}>Privacy Policy</button>
             {' \u00b7 '}
             <button className="underline" onClick={() => setLegalView('terms')}>Terms of Service</button>
@@ -2441,7 +2463,7 @@ Requirements:
             {' \u00b7 '}
             <a className="underline" href="https://m.me/1403473456182680" target="_blank" rel="noreferrer">Messenger</a>
           </p>
-        </main>
+        </div>
 {legalView && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setLegalView(null)}>
           <div className="bg-white rounded-xl max-w-md w-full max-h-[85vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
@@ -2464,6 +2486,7 @@ Requirements:
       </div>
     );
   }
+
 
   // Hidden admin stats dashboard: open the app at <origin>/#stats while signed in.
   // (Placed after the sign-in gate above, so it requires login.)
