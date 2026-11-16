@@ -10,7 +10,7 @@ const outDir = join(root, 'public');
 mkdirSync(outDir, { recursive: true });
 
 const svg = readFileSync(join(root, 'public', 'icon.svg'));
-const BG = '#0f172a';
+const BG = '#5F7D5E';
 
 async function main() {
   // Standard icons: full-bleed render of the source SVG.
