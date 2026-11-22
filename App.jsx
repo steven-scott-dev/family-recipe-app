@@ -1199,7 +1199,7 @@ Design meals around these before adding new purchases. Prefer recipes that consu
 MODULAR FORMAT: Make ${modularCount} of the dinners "build-your-own" style — one shared base with separate components everyone assembles themselves (taco bars, grain bowls, baked potato bars, pasta with topping choices). List each component's ingredients separately. In the instructions, describe the assembly. These must be picky-eater-proof: include at least one plain, kid-safe component. Set "modular": true on these meals.` : '';
     const lastPlanDay = planDayList[planDayList.length - 1];
     const useUpSection = (useUpNight && selectedMeals.includes('Dinner')) ? `
-USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a flexible clean-out dinner built ONLY from ingredients already on this week's shopping list — bulk buys and partial-use items from earlier meals (the rest of the potato bag, remaining half cabbage, open sauces/grains, the second onion). No new specialty purchases for this meal. Title it as a flexible clean-out meal (e.g. "Fridge Clean-Out Stir-Fry"). Price it from the groceries already bought (near $0 added cost). IMPORTANT: design it around the grocery bag, not cooked leftovers — it must work even if earlier meals were skipped. It still counts toward the $${budget} ceiling.` : '';
+USE-IT-UP NIGHT: The final planned day (${lastPlanDay}) must be a flexible clean-out dinner built ONLY from ingredients already on this week's shopping list — bulk buys and partial-use items from earlier meals (the rest of the potato bag, remaining half cabbage, open sauces/grains, the second onion). No new specialty purchases for this meal. Title it as a flexible clean-out meal (e.g. "Fridge Clean-Out Stir-Fry"). Price it from the groceries already bought (near $0 added cost). IMPORTANT: design it around the grocery bag, not cooked leftovers — it must work even if earlier meals were skipped. It still counts toward the $${budget} ceiling. On this meal ONLY, also set "usesLeftovers": a list of 2-4 short strings naming what it uses up, each with the amount left (e.g. ["rest of the potato bag", "half cabbage", "open jar of sauce"]). Every item MUST already be on this week's shopping list or in an earlier meal's ingredients — never invent an item. If nothing is genuinely left over, set it to [].` : '';
     const packageSection = `
 PACKAGE-AWARE PLANNING: Groceries are sold in packages, not single units — a bag of potatoes, a bunch of celery, a head of garlic, a loaf of bread. When you introduce a packaged ingredient, prefer reusing it in 2-3 meals across the week so the whole package gets used up. Prefer ingredients already in the plan over introducing new ones: fewer distinct ingredients means a smaller shopping list, less waste, and lower cost. This is a preference, not a rule — never sacrifice meal variety or family appeal to force reuse.`;
 
@@ -1238,6 +1238,7 @@ Each item in the array MUST strictly follow this JSON schema:
     "prepTime": "15 mins",
     "servings": "4 servings",
     "nutrition": { "calories": 520, "protein": "32g", "carbs": "45g", "fat": "20g", "fiber": "6g", "sodium": "680mg" },
+    "usesLeftovers": [],
     "ingredients": [
       "2 cups Almond Milk",
       "1 tsp Garlic Powder"
@@ -3168,6 +3169,9 @@ Requirements:
                                   {meal.modular && <span className="mr-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">🍱 build-your-own</span>}
                                   {meal.displayTitle || `${meal.type}: ${meal.title}`}
                                 </p>
+                                {Array.isArray(meal.usesLeftovers) && meal.usesLeftovers.length > 0 && (
+                                  <p className="text-[#5F7D5E] font-semibold">♻️ Uses: {meal.usesLeftovers.join(', ')}</p>
+                                )}
                                 <p className="text-slate-500">Tap to view ingredients & steps 📖</p>
                               </div>
                             </div>
@@ -3714,6 +3718,9 @@ Requirements:
                       <div className="p-3">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{m.day} {m.type}</p>
                         <h3 className="font-bold text-base text-slate-800 leading-snug" style={{ fontFamily: "'Lora', Georgia, serif" }}>{m.title}</h3>
+                        {Array.isArray(m.usesLeftovers) && m.usesLeftovers.length > 0 && (
+                          <p className="text-xs text-[#5F7D5E] font-semibold mt-1">♻️ Uses: {m.usesLeftovers.join(', ')}</p>
+                        )}
                         <div className="flex gap-2 text-xs font-semibold mt-1.5 flex-wrap items-center">
                           <span className="text-[#5F7D5E] bg-[#FDF9F0] px-2 py-0.5 rounded border border-[#E9DFC9]">
                             ⏱️ {m.prepTime || '15-20 mins'}
